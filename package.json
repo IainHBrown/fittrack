@@ -1,0 +1,11 @@
+{
+  "name": "fittrack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fitness Tracker: a personal training and health PWA",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test tests/"
+  }
+}

@@ -1,0 +1,171 @@
+/* Reset, page frame, and the shared type styles. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 16px;
+  line-height: 1.35;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--volt);
+  outline-offset: 2px;
+}
+input, select, textarea {
+  font: inherit;
+  color: inherit;
+  user-select: text;
+  -webkit-user-select: text;
+}
+h1, h2, h3, p { margin: 0; }
+svg { display: block; flex-shrink: 0; }
+
+/* ---------- page frame ---------- */
+
+/* Solid strip behind the iPhone status bar so content never shows through it. */
+.statusbar-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--safe-top);
+  background: var(--bg);
+  z-index: 20;
+}
+
+#screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: calc(var(--safe-top) + 14px) var(--gutter) calc(var(--tabbar-h) + var(--safe-bottom) + 28px);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 520px;
+  margin: 0 auto;
+  animation: screen-in 0.22s var(--ease-out);
+}
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- tab bar ---------- */
+
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 8px 8px calc(var(--safe-bottom) + 4px);
+  background: #111113;
+  border-top: 1px solid var(--line);
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 48px;
+  color: var(--ash);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.15s, transform 0.15s var(--ease-out);
+}
+.tab:active { transform: scale(0.92); }
+.tab[aria-current="page"] { color: var(--volt); font-weight: 800; }
+
+/* ---------- type ---------- */
+
+.label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+.label-strong {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 44px;
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.hero {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 64px;
+  line-height: 0.84;
+  text-transform: uppercase;
+}
+.num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+.unit {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.42em;
+  letter-spacing: 0.1em;
+  color: var(--ash);
+  text-transform: uppercase;
+}
+.body-2 { font-size: 14px; color: var(--text-2); }
+.small { font-size: 12px; color: var(--ash); }
+.volt { color: var(--volt); }
+.flare { color: var(--flare); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

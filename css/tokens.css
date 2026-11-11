@@ -1,0 +1,66 @@
+/* Design tokens: every colour, font and size the app uses comes from here. */
+
+@font-face {
+  font-family: 'Sofia Condensed';
+  src: url('../assets/fonts/sofia-condensed.woff2') format('woff2');
+  font-weight: 1 1000;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Sofia Condensed';
+  src: url('../assets/fonts/sofia-condensed-italic.woff2') format('woff2');
+  font-weight: 1 1000;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('../assets/fonts/instrument-sans.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* surfaces */
+  --bg: #0B0B0C;
+  --surface: #151517;
+  --surface-2: #1C1C1F;
+  --track: #232326;
+  --line: #26262A;
+  --line-strong: #3A3A3F;
+
+  /* text (no pure white anywhere) */
+  --text: #E9E7E1;
+  --text-2: #C9C7C1;
+  --ash: #8E8C86;
+
+  /* accent + sports */
+  --volt: #D4FF2A;
+  --volt-dim: #55661A;
+  --swim: #2CD4F0;
+  --bike: #FF7A1A;
+  --run: #D4FF2A;
+  --lift: #9B7BFF;
+  --flare: #FF6B5E;
+  --flare-dim: #5C2824;
+
+  /* type */
+  --font-display: 'Sofia Condensed', 'Arial Narrow', sans-serif;
+  --font-text: 'Instrument Sans', -apple-system, 'Helvetica Neue', sans-serif;
+
+  /* shape */
+  --r-panel: 28px;
+  --r-card: 20px;
+  --r-btn: 18px;
+  --r-chip: 14px;
+  --gutter: 16px;
+
+  /* layout */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tabbar-h: 58px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}

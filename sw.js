@@ -1,0 +1,80 @@
+// Service worker: makes the app work offline.
+// Strategy: answer from the cache straight away, and fetch a fresh copy in
+// the background so the next launch has the newest version.
+// When adding a new file to the app, add it to FILES below.
+
+const CACHE = 'fittrack-v1';
+
+const FILES = [
+  './',
+  'index.html',
+  'manifest.webmanifest',
+  'css/tokens.css',
+  'css/base.css',
+  'css/components.css',
+  'assets/fonts/sofia-condensed.woff2',
+  'assets/fonts/sofia-condensed-italic.woff2',
+  'assets/fonts/instrument-sans.woff2',
+  'assets/icons/icon.svg',
+  'assets/icons/icon-192.png',
+  'assets/icons/icon-512.png',
+  'assets/icons/apple-touch-icon.png',
+  'js/app.js',
+  'js/version.js',
+  'js/defaults.js',
+  'js/db.js',
+  'js/state.js',
+  'js/lib/dom.js',
+  'js/lib/dates.js',
+  'js/logic/day.js',
+  'js/ui/icons.js',
+  'js/ui/ring.js',
+  'js/ui/sheet.js',
+  'js/ui/toast.js',
+  'js/sheets/water.js',
+  'js/sheets/supps.js',
+  'js/sheets/sleep.js',
+  'js/screens/today.js',
+  'js/screens/sleep.js',
+  'js/screens/me.js',
+  'js/screens/settings.js',
+  'js/screens/placeholders.js',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(FILES.map((f) => new Request(f, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+
+  event.respondWith(
+    caches.open(CACHE).then(async (cache) => {
+      const cached = await cache.match(req, { ignoreSearch: true });
+      const fresh = fetch(req, { cache: 'no-cache' })
+        .then((res) => {
+          if (res.ok) cache.put(req, res.clone());
+          return res;
+        })
+        .catch(() => null);
+      if (cached) {
+        event.waitUntil(fresh);
+        return cached;
+      }
+      return (await fresh) || new Response('Offline', { status: 503, statusText: 'Offline' });
+    })
+  );
+});

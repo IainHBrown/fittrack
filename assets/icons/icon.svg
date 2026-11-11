@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0B0B0C"/>
+  <!-- open progress ring, square ends -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#232326" stroke-width="56"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#D4FF2A" stroke-width="56"
+          stroke-dasharray="735 942.5" transform="rotate(-90 256 256)"/>
+  <!-- forward chevrons -->
+  <path d="M190 196l60 60-60 60M270 196l60 60-60 60" fill="none" stroke="#E9E7E1" stroke-width="34" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>
