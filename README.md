@@ -118,3 +118,40 @@ IndexedDB database `fittrack`:
 The plan itself is not stored. It is rebuilt from Settings every time, so
 changing a goal event or any number regenerates it, and session ids
 (`weekStart|kind|n`) stay the same so logs remain attached.
+
+## Cloud features (Stage 7): photo estimates and automatic backup
+
+Both run on your own free Cloudflare Worker in `worker/`. Nothing is paid:
+
+- **Workers AI** reads meal photos: 10,000 free "neurons" a day, which is
+  roughly 100 or more photo estimates. The Worker also caps estimates at 80 a day.
+- **Workers KV** holds the backup: 1 GB and 1,000 writes a day free. The
+  Worker keeps the latest backup and the one before it.
+- The Worker only answers requests carrying your private passphrase
+  (`APP_SECRET`, a Worker secret). It is never in this repository; the app
+  stores it only on your phone and leaves it out of every backup.
+
+### One-time setup
+
+1. Create a free account at https://dash.cloudflare.com/sign-up (no card needed).
+2. In a terminal, from the `worker` folder:
+
+   ```powershell
+   cd C:\Users\iainh\fittrack\worker
+   npx wrangler login
+   npx wrangler kv namespace create KV
+   ```
+
+   Copy the `id` it prints into `wrangler.toml` (replacing `REPLACE_WITH_KV_NAMESPACE_ID`).
+3. Deploy, then set the passphrase (you choose it; use four or more random words):
+
+   ```powershell
+   npx wrangler deploy
+   npx wrangler secret put APP_SECRET
+   ```
+
+4. In the app: Me, Settings, Backup. Enter the Worker address that `deploy`
+   printed (like `https://fittrack.<your-name>.workers.dev`) and the same
+   passphrase, then tap **Test connection**.
+
+To change the Worker later, edit `worker/src/index.js` and run `npx wrangler deploy` again.

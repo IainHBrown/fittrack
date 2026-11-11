@@ -10,6 +10,7 @@ import { html, mount, onAction } from '../lib/dom.js';
 import { settings } from '../state.js';
 import { logMeal, updateMeal, removeMeal, saveFood, removeFood } from '../food-service.js';
 
+// (a photo estimate opens the 'custom' form pre-filled, so it can be edited before saving)
 const TITLES = { custom: 'Custom entry', meal: 'Edit meal', food: 'Edit quick-add', newFood: 'New quick-add' };
 
 /**
@@ -20,7 +21,7 @@ const TITLES = { custom: 'Custom entry', meal: 'Edit meal', food: 'Edit quick-ad
  * @param {string} [o.group]     default group for a new quick-add
  * @param {() => void} onChange
  */
-export function openFoodSheet({ mode, date, item = null, group = null }, onChange) {
+export function openFoodSheet({ mode, date, item = null, group = null, hint = '' }, onChange) {
   const groups = settings().food.groups;
   const isFood = mode === 'food' || mode === 'newFood';
   const f = {
@@ -40,6 +41,7 @@ export function openFoodSheet({ mode, date, item = null, group = null }, onChang
 
     function draw() {
       mount(body, html`
+        ${hint ? html`<p class="body-2" role="note">${hint}</p>` : ''}
         <div class="form-field">
           <label class="label" for="fd-name">Name</label>
           <input class="input input-wide" style="height:52px" id="fd-name" type="text" maxlength="60" value="${f.name}" placeholder="e.g. Chicken and rice">

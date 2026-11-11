@@ -9,8 +9,10 @@ import { dayKey } from '../lib/dates.js';
 import { icon } from '../ui/icons.js';
 import { toast } from '../ui/toast.js';
 import { settings, setSetting, resetSettings, pathGet, loadSettings } from '../state.js';
-import { getAll, putItem, dumpAll, restoreAll, kvGet, kvSet } from '../db.js';
-import { makeBackup, checkBackup, backupFileName } from '../logic/backup.js';
+import { getAll, putItem, kvGet, kvSet } from '../db.js';
+import { collectBackup, applyBackup } from '../backup-service.js';
+import { cloudConfig, ping, backupNow, cloudInfo, fetchCloudBackup } from '../cloud.js';
+import { checkBackup, backupFileName } from '../logic/backup.js';
 import { VERSION } from '../version.js';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -332,10 +334,48 @@ const PAGES = {
 let pendingImport = null; // a checked backup waiting for confirmation
 let importError = '';
 
+let cloudNote = ''; // result of the last cloud action, shown under the buttons
+let cloudBusy = false;
+
+async function cloudPanel(s) {
+  const cfg = await cloudConfig();
+  const [last, pending] = await Promise.all([kvGet('lastCloudBackup'), kvGet('cloudPending')]);
+  const when = (iso) => new Date(iso).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const size = (bytes) => (bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+  return panel('Cloud', html`
+    <p class="body-2" style="padding:10px 0">Your own free Cloudflare Worker does the photo food estimates and keeps an automatic backup. The setup steps are in the README.</p>
+    ${text(s, 'Worker address', 'cloud.url', { max: 120 })}
+    <label class="form-field" style="padding:8px 0">
+      <span class="label">Passphrase ${cfg.secret ? '· saved on this phone' : '· not set'}</span>
+      <input class="input input-wide" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="200" data-secret placeholder="${cfg.secret ? 'Type a new one to change it' : 'The APP_SECRET you gave the Worker'}">
+    </label>
+    <button class="btn btn-quiet" data-action="cloudTest" ${cfg.ready && !cloudBusy ? '' : 'disabled'}>Test connection</button>
+
+    ${cfg.ready ? html`
+      <button class="rowlink" style="margin-top:8px" data-action="autoBackup" aria-pressed="${String(!!s.cloud.autoBackup)}">
+        <div class="rowlink-main">
+          <span class="label-strong" style="font-size:17px">Automatic backup</span>
+          <span class="body-2">${s.cloud.autoBackup ? `At most every ${s.cloud.backupEveryHours} hours, when you use the app online.` : 'Off. Back up by hand below.'}</span>
+        </div>
+        <span class="switch"></span>
+      </button>
+      ${num(s, 'Hours between backups', '', 'cloud.backupEveryHours', { unit: 'h', min: 1, max: 168 })}
+      ${pending ? html`
+        <p class="body-2 flare" role="note" style="padding:10px 0">The cloud already holds a backup from ${when(pending.savedAt)}. Automatic backup is paused until you either restore it or replace it with what is on this phone.</p>` : ''}
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-quiet" data-action="cloudBackup" ${cloudBusy ? 'disabled' : ''}>${pending ? 'Replace it' : 'Back up now'}</button>
+        <button class="btn btn-quiet" data-action="cloudRestore" ${cloudBusy ? 'disabled' : ''}>Restore</button>
+      </div>
+      ${note(last ? `Last cloud backup: ${when(last.at)} (${size(last.bytes)}).` : 'No cloud backup from this phone yet.')}` : note('Enter the address and passphrase to turn cloud features on.')}
+    ${cloudNote ? html`<p class="body-2" role="status" style="padding-bottom:10px">${cloudNote}</p>` : ''}`, '8px 20px 12px');
+}
+
 async function dataPage(s) {
   const last = await kvGet('lastExport');
   const fmt = (iso) => new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
   return html`
+    ${await cloudPanel(s)}
+
     ${panel('Export', html`
       <p class="body-2" style="padding:10px 0">Saves everything (settings, plan changes, logs, lifts, food, sleep, stretches and their photos) as one file. Keep a copy somewhere other than this phone.</p>
       <button class="btn" data-action="export">Export all data</button>
@@ -360,7 +400,7 @@ async function dataPage(s) {
 }
 
 async function exportAll() {
-  const data = makeBackup(await dumpAll(), new Date(), VERSION);
+  const data = await collectBackup();
   const name = backupFileName(dayKey());
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   await kvSet('lastExport', new Date().toISOString());
@@ -420,6 +460,16 @@ export async function render(el, ctx) {
 
   const again = () => ctx.refresh();
 
+  /** Run a cloud action with a "working" note, then show its result or error. */
+  async function cloudDo(working, fn) {
+    cloudBusy = true;
+    cloudNote = working;
+    await ctx.refresh();
+    try { cloudNote = await fn(); } catch (err) { cloudNote = err && err.message ? err.message : 'That did not work.'; }
+    cloudBusy = false;
+    again();
+  }
+
   el.onchange = async (e) => {
     const t = e.target;
     const kind = t.dataset.kind;
@@ -432,6 +482,13 @@ export async function render(el, ctx) {
         const res = checkBackup(JSON.parse(await t.files[0].text()));
         if (res.ok) pendingImport = res; else importError = res.error;
       } catch { importError = 'That file could not be read as a backup.'; }
+      return again();
+    }
+
+    // ---- cloud passphrase (kept only on this device) ----
+    if ('secret' in t.dataset) {
+      const v = t.value.trim();
+      if (v) { await kvSet('cloudSecret', v); cloudNote = 'Passphrase saved on this phone.'; }
       return again();
     }
 
@@ -525,10 +582,27 @@ export async function render(el, ctx) {
       again();
     },
     export: async () => { await exportAll(); again(); },
+
+    autoBackup: async () => { await setSetting('cloud.autoBackup', !settings().cloud.autoBackup); again(); },
+    cloudTest: () => cloudDo('Checking...', async () => {
+      const r = await ping();
+      return r.ai && r.storage ? 'Connected. Photo estimates and backup are ready.' : 'Connected, but the Worker is missing its AI or storage binding.';
+    }),
+    cloudBackup: () => cloudDo('Backing up...', async () => {
+      const r = await backupNow();
+      return `Backed up (${Math.max(1, Math.round(r.bytes / 1024))} KB).`;
+    }),
+    cloudRestore: () => cloudDo('Fetching the cloud backup...', async () => {
+      const info = await cloudInfo();
+      if (!info.latest) return 'There is no cloud backup yet.';
+      pendingImport = await fetchCloudBackup(); // confirmed with the same button as a file import
+      importError = '';
+      return 'Cloud backup fetched. Review it under Import below, then confirm.';
+    }),
     cancelImport: () => { pendingImport = null; importError = ''; again(); },
     confirmImport: async () => {
       try {
-        await restoreAll(pendingImport.stores);
+        await applyBackup(pendingImport.stores);
         pendingImport = null;
         await loadSettings();
         location.hash = '#/today';

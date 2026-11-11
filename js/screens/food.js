@@ -11,6 +11,8 @@ import { getPlanState, dayTypeOn } from '../plan-service.js';
 import { foodTotals, foodTargets, rangeStatus, rangeText, DAY_TYPE_LABEL } from '../logic/food.js';
 import { seedFoods, getFoods, logMeal } from '../food-service.js';
 import { openFoodSheet } from '../sheets/food.js';
+import { compressPhoto } from '../lib/photo.js';
+import { estimatePhoto, CloudError } from '../cloud.js';
 
 let group = null; // quick-add list being shown
 
@@ -98,7 +100,14 @@ export async function render(el, ctx) {
           </div>`)}
       </section>` : ''}
 
-    <button class="btn" data-action="custom">${icon('plus', 22, 3)} Custom entry</button>
+    <div class="btn-row">
+      <label class="btn" style="position:relative;overflow:hidden;font-size:22px" id="photo-btn">
+        ${icon('camera', 24, 2.4)} <span id="photo-label">Photo</span>
+        <input type="file" accept="image/*" capture="environment" data-photo style="position:absolute;inset:0;opacity:0;width:100%;height:100%" aria-label="Take a photo of your meal for a rough estimate">
+      </label>
+      <button class="btn btn-quiet" style="min-height:58px;border-radius:var(--r-btn)" data-action="custom">${icon('plus', 20, 2.6)} Custom</button>
+    </div>
+    <p class="small flare" id="photo-error" role="alert" style="padding:0 4px;margin-top:-8px"></p>
 
     <section style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 4px 0">
@@ -125,10 +134,33 @@ export async function render(el, ctx) {
       <button class="btn btn-ghost" data-action="newFood">${icon('plus', 20, 2.6)} Add to ${group}</button>
     </section>
 
-    <p class="small" style="padding:0 4px">Photo estimates from your camera arrive in Stage 7.</p>
   `);
 
   const changed = () => ctx.refresh();
+
+  // Photo estimate: shrink the photo, ask the Worker, then open the entry
+  // form filled in so the numbers can be corrected before saving.
+  el.onchange = async (e) => {
+    if (!('photo' in e.target.dataset) || !e.target.files[0]) return;
+    const label = el.querySelector('#photo-label');
+    const error = el.querySelector('#photo-error');
+    error.textContent = '';
+    label.textContent = 'Estimating...';
+    el.querySelector('#photo-btn').style.opacity = '0.6';
+    try {
+      const photo = await compressPhoto(e.target.files[0], 1024, 0.7);
+      const est = await estimatePhoto(photo);
+      openFoodSheet({
+        mode: 'custom', date: today, item: est,
+        hint: `Estimate from your photo (${est.confidence} confidence). ${est.note} Check the numbers before saving.`,
+      }, changed);
+    } catch (err) {
+      error.textContent = err instanceof CloudError ? err.message : 'The photo could not be used. Enter the meal by hand.';
+    }
+    await ctx.refresh();
+    const again = el.querySelector('#photo-error');
+    if (again && error.textContent) again.textContent = error.textContent;
+  };
   onAction(el, {
     group: (t) => { group = t.dataset.v; ctx.refresh(); },
     quick: async (t) => {

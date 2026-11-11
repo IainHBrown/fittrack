@@ -7,6 +7,7 @@ import { loadSettings } from './state.js';
 import { requestPersistence } from './db.js';
 import { icon } from './ui/icons.js';
 import { celebrate } from './ui/celebrate.js';
+import { maybeAutoBackup } from './cloud.js';
 import { getGame, newMoments } from './game-service.js';
 import { render as renderToday } from './screens/today.js';
 import { render as renderSleep } from './screens/sleep.js';
@@ -80,6 +81,7 @@ async function checkMoments() {
     if (moments.length) setTimeout(() => celebrate(moments), 700);
   } catch { /* never let a celebration break the app */ }
   checking = false;
+  maybeAutoBackup(); // uploads only when one is due and cloud is set up
 }
 
 async function navigate() {

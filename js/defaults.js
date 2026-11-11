@@ -235,6 +235,13 @@ export const DEFAULTS = {
     { id: 'water-streak', name: 'Water streak', metric: 'waterStreak', unit: 'days', tiers: [7, 30, 100] },
   ],
 
+  // ---------- cloud (Cloudflare Worker): photo estimates and backup ----------
+  cloud: {
+    url: '',              // the Worker's address, e.g. https://fittrack.yourname.workers.dev
+    autoBackup: true,
+    backupEveryHours: 6,  // at most one automatic backup per this many hours
+  },
+
   // ---------- stretching ----------
   stretchCategories: ['Warm-up', 'Activation', 'Mobility', 'Recovery', 'Roller', 'Cool-down'],
 
