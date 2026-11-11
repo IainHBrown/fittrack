@@ -16,7 +16,7 @@ import { render as renderRoutine } from './screens/routine.js';
 import { render as renderExercise } from './screens/exercise.js';
 import { render as renderWorkout } from './screens/workout.js';
 import { render as renderStretches } from './screens/stretches.js';
-import { renderFood } from './screens/placeholders.js';
+import { render as renderFood } from './screens/food.js';
 
 const TABS = [
   ['today', 'Today'],

@@ -142,6 +142,56 @@ export const DEFAULTS = {
     ] },
   },
 
+  // ---------- food ----------
+  food: {
+    // daily targets by day type (the plan decides which type each day is)
+    targets: {
+      rest: { cal: 2800, carbs: 350 },
+      training: { cal: 3100, carbs: 425 },
+      long: { cal: 3500, carbs: 500 },
+    },
+    protein: { min: 130, max: 160 }, // a range: "hit" once you are inside it
+    fat: { min: 90, max: 100 },
+    groups: ['Subway', 'Gzowski', 'Staples', 'My meals'],
+  },
+
+  // Starting quick-add list. Copied into storage on first run; after that it is
+  // edited in the app. ALL VALUES ARE ESTIMATES.
+  // Subway numbers are built from Subway Canada's published nutrition table
+  // (June 2026): footlong = two 6-inch servings of each component.
+  // Gzowski and staple items have no published nutrition, so they are rough
+  // estimates from typical recipes and portions.
+  seedFoods: [
+    { id: 'sub-ccc', group: 'Subway', name: 'Footlong Cold Cut Combo, my usual', note: 'Italian Herbs & Cheese, lettuce, tomato, pickles, olives, mayo, chipotle. No cheese counted (+80 cal with it).', cal: 1220, protein: 38, carbs: 92, fat: 76 },
+    { id: 'sub-rot', group: 'Subway', name: 'Footlong Rotisserie-Style Chicken', note: 'Standard build', cal: 900, protein: 56, carbs: 86, fat: 36 },
+    { id: 'sub-turkey', group: 'Subway', name: 'Footlong Turkey Breast', note: 'Standard build', cal: 860, protein: 40, carbs: 92, fat: 36 },
+    { id: 'sub-steak', group: 'Subway', name: 'Footlong Steak & Cheese', note: 'Standard build', cal: 940, protein: 50, carbs: 92, fat: 42 },
+    { id: 'sub-teri', group: 'Subway', name: 'Footlong Sweet Onion Chicken Teriyaki', note: 'Standard build', cal: 820, protein: 52, carbs: 118, fat: 14 },
+    { id: 'sub-bmt', group: 'Subway', name: 'Footlong Italian B.M.T.', note: 'Standard build', cal: 1100, protein: 46, carbs: 92, fat: 60 },
+    { id: 'sub-6rot', group: 'Subway', name: '6-inch Rotisserie-Style Chicken', note: 'Standard build', cal: 450, protein: 28, carbs: 43, fat: 18 },
+    { id: 'sub-cookie', group: 'Subway', name: 'Subway cookie', note: 'Chocolate chunk', cal: 210, protein: 2, carbs: 29, fat: 10 },
+
+    { id: 'gz-smash', group: 'Gzowski', name: 'Smash burger', note: 'Double patty, cheese, bun, sauce', cal: 720, protein: 38, carbs: 42, fat: 42 },
+    { id: 'gz-burrito', group: 'Gzowski', name: 'Burrito (Create station)', note: 'Chicken, rice, beans, cheese, salsa', cal: 900, protein: 45, carbs: 105, fat: 30 },
+    { id: 'gz-teriyaki', group: 'Gzowski', name: 'Chicken teriyaki bowl (Create station)', note: 'Rice, chicken, vegetables, sauce', cal: 700, protein: 40, carbs: 100, fat: 14 },
+    { id: 'gz-fries', group: 'Gzowski', name: 'Side of fries', note: '', cal: 400, protein: 5, carbs: 50, fat: 20 },
+    { id: 'gz-flatbread', group: 'Gzowski', name: 'Flatbread (al forno or pesto bruschetta)', note: '', cal: 600, protein: 22, carbs: 70, fat: 24 },
+    { id: 'gz-pasta', group: 'Gzowski', name: 'Pasta bowl with meat sauce', note: '', cal: 750, protein: 30, carbs: 100, fat: 22 },
+    { id: 'gz-pizza', group: 'Gzowski', name: 'Pizza slice', note: '', cal: 300, protein: 13, carbs: 36, fat: 12 },
+    { id: 'gz-wrap', group: 'Gzowski', name: 'Grilled chicken wrap', note: '', cal: 600, protein: 35, carbs: 55, fat: 25 },
+    { id: 'gz-breakfast', group: 'Gzowski', name: 'Hot breakfast', note: '2 eggs, bacon, toast, potatoes', cal: 650, protein: 30, carbs: 50, fat: 36 },
+    { id: 'gz-salad', group: 'Gzowski', name: 'Salad bar plate with chicken', note: '', cal: 400, protein: 30, carbs: 25, fat: 20 },
+
+    { id: 'st-cereal', group: 'Staples', name: 'Cereal with a banana', note: '1.5 cups cereal, 1 cup 2% milk, 1 banana', cal: 450, protein: 14, carbs: 85, fat: 7 },
+    { id: 'st-pbrice', group: 'Staples', name: 'Peanut butter on rice cakes', note: '2 rice cakes, 2 tbsp peanut butter', cal: 260, protein: 8, carbs: 20, fat: 17 },
+    { id: 'st-banana', group: 'Staples', name: 'Banana', note: '', cal: 105, protein: 1, carbs: 27, fat: 0 },
+    { id: 'st-shake', group: 'Staples', name: 'Protein shake', note: '1 scoop whey in water', cal: 120, protein: 24, carbs: 3, fat: 2 },
+    { id: 'st-chocmilk', group: 'Staples', name: 'Chocolate milk, 500 ml', note: '', cal: 320, protein: 16, carbs: 52, fat: 5 },
+    { id: 'st-yogurt', group: 'Staples', name: 'Greek yogurt cup', note: '', cal: 150, protein: 15, carbs: 12, fat: 4 },
+    { id: 'st-bar', group: 'Staples', name: 'Granola bar', note: '', cal: 190, protein: 4, carbs: 29, fat: 7 },
+    { id: 'st-coffee', group: 'Staples', name: 'Coffee, double double', note: 'Medium', cal: 190, protein: 3, carbs: 27, fat: 9 },
+  ],
+
   // ---------- stretching ----------
   stretchCategories: ['Warm-up', 'Activation', 'Mobility', 'Recovery', 'Roller', 'Cool-down'],
 

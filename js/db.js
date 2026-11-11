@@ -10,7 +10,10 @@ const DB_NAME = 'fittrack';
 //   exercises - the exercise library: { id, name, group, type, increment?, repUnit?, archived? }
 //   stretches - your stretches: { id, name, category, notes, photo (compressed JPEG data URL) }
 
-const DB_VERSION = 3;
+//   foods - the quick-add food list: { id, group, name, note, cal, protein, carbs, fat }
+// Meals you log are stored on the day record (days[date].meals).
+
+const DB_VERSION = 4;
 
 let dbPromise = null;
 
@@ -26,6 +29,7 @@ function open() {
         if (!db.objectStoreNames.contains('overrides')) db.createObjectStore('overrides', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('exercises')) db.createObjectStore('exercises', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('stretches')) db.createObjectStore('stretches', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('foods')) db.createObjectStore('foods', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -49,7 +53,7 @@ export const kvSet = (key, value) => request('kv', 'readwrite', (s) => s.put(val
 
 /** A blank day record. */
 export function emptyDay(date) {
-  return { date, sleep: null, water: [], supps: {}, suppList: null };
+  return { date, sleep: null, water: [], supps: {}, suppList: null, meals: [] };
 }
 
 export async function getDay(date) {

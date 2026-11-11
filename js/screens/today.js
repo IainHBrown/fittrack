@@ -5,6 +5,7 @@ import { dayKey, fmtDayLong, fmtDate, daysBetween } from '../lib/dates.js';
 import { getDay, setOverride, getLogs } from '../db.js';
 import { seedLifting, getExercises, getRoutines, getActiveWorkout, makeItem, targetText } from '../lift-service.js';
 import { waterTotal, waterGoal, fmtLitres, suppsTicked, sleepLevel } from '../logic/day.js';
+import { foodTotals, foodTargets } from '../logic/food.js';
 import { getPlanState, sessionsOn, dayTypeOn, currentWeekIndex } from '../plan-service.js';
 import { PHASE_LABEL, KIND_LABEL, SPORT_LABEL } from '../engine/plan.js';
 import { targetFor } from '../engine/zones.js';
@@ -161,6 +162,8 @@ export async function render(el, ctx) {
   const water = waterTotal(day);
   const wGoal = waterGoal(s, day);
   const supps = suppsTicked(day, s.supplements);
+  const food = foodTotals(day);
+  const foodTarget = foodTargets(s, day.dayType);
   const level = sleepLevel(day.sleep, s);
   const goal = state.plan.goal;
   const todays = sessionsOn(state, today);
@@ -229,8 +232,8 @@ export async function render(el, ctx) {
       })}
       ${ringButton({
         id: 'food', action: 'food', label: 'Food · cal', pulse: ctx.pulse,
-        ring: ringSVG({ frac: 0, label: 'Food tracking arrives in Stage 4' }),
-        value: { node: html`<span style="color:var(--ash)">0</span>`, text: '0' },
+        ring: ringSVG({ frac: food.cal / foodTarget.cal, label: `Food ${food.cal} of ${foodTarget.cal} calories` }),
+        value: food.cal ? { text: food.cal.toLocaleString('en-CA') } : { node: html`<span style="color:var(--ash)">0</span>`, text: '0' },
       })}
     </div>
 

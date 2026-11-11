@@ -3,9 +3,12 @@
 A personal training and health app, built as a Progressive Web App for one iPhone.
 Everything is stored on the phone. There is no login, no server, and nothing paid.
 
-**Status: Stage 3 of 9.** New in Stage 3: lifting workouts with automatic
-weight targets (progressive overload), routine editing, per-exercise history
-and records, and a stretch library with photos. Also working: Today screen, sleep score with calendar and
+**Status: Stage 4 of 9.** New in Stage 4: food tracking (calories, protein,
+carbs, fat) against targets by day type, with a preloaded quick-add list.
+Subway values in that list are built from Subway Canada's published nutrition
+table (June 2026); dining-hall and staple items are rough estimates. Also
+working: lifting with progressive overload, routines, exercise history, the
+stretch library, Today screen, sleep score with calendar and
 stats, water, supplements, daily reset, offline use, the training plan engine
 (phases, weekly volume, day-by-day schedule, baseline tests and zones), goal
 events, session logging, skip / move, busy-week mode, knee protection, and

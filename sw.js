@@ -3,7 +3,7 @@
 // the background so the next launch has the newest version.
 // When adding a new file to the app, add it to FILES below.
 
-const CACHE = 'fittrack-v3';
+const CACHE = 'fittrack-v4';
 
 const FILES = [
   './',
@@ -57,7 +57,10 @@ const FILES = [
   'js/screens/sleep.js',
   'js/screens/me.js',
   'js/screens/settings.js',
-  'js/screens/placeholders.js',
+  'js/screens/food.js',
+  'js/sheets/food.js',
+  'js/food-service.js',
+  'js/logic/food.js',
 ];
 
 self.addEventListener('install', (event) => {

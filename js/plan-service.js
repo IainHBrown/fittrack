@@ -54,7 +54,8 @@ export function sessionsOn(state, date) {
 /** 'long' | 'training' | 'rest' for a date. */
 export function dayTypeOn(state, date) {
   const i = weekIndexOf(state.plan, date);
-  return i < 0 ? 'rest' : dayType(resolvedWeek(state, i), date);
+  // outside the plan (before it starts, or between events) assume an ordinary training day
+  return i < 0 ? 'training' : dayType(resolvedWeek(state, i), date);
 }
 
 export async function setBusyWeek(weekStart, on) {

@@ -83,6 +83,21 @@ export async function render(el, ctx) {
       <p class="small" style="padding:8px 0 10px">Routines, exercises and per-exercise jumps are edited in Train, then Lifting.</p>
     </section>
 
+    <h2 class="label-strong section-title">Food targets</h2>
+    <section class="panel" style="gap:0;padding:8px 20px">
+      ${numField('Rest day calories', '', 'food.targets.rest.cal', s.food.targets.rest.cal, 'cal', 500, 8000)}
+      ${numField('Rest day carbs', '', 'food.targets.rest.carbs', s.food.targets.rest.carbs, 'g', 0, 1500)}
+      ${numField('Training day calories', '', 'food.targets.training.cal', s.food.targets.training.cal, 'cal', 500, 8000)}
+      ${numField('Training day carbs', '', 'food.targets.training.carbs', s.food.targets.training.carbs, 'g', 0, 1500)}
+      ${numField('Long day calories', 'Days with a long ride or long run', 'food.targets.long.cal', s.food.targets.long.cal, 'cal', 500, 8000)}
+      ${numField('Long day carbs', '', 'food.targets.long.carbs', s.food.targets.long.carbs, 'g', 0, 1500)}
+      ${numField('Protein, from', 'Counts as hit inside the range', 'food.protein.min', s.food.protein.min, 'g', 0, 500)}
+      ${numField('Protein, to', '', 'food.protein.max', s.food.protein.max, 'g', 0, 500)}
+      ${numField('Fat, from', '', 'food.fat.min', s.food.fat.min, 'g', 0, 500)}
+      ${numField('Fat, to', '', 'food.fat.max', s.food.fat.max, 'g', 0, 500)}
+      <p class="small" style="padding:8px 0 10px">The quick-add list is edited on the Food tab with the gear beside each item.</p>
+    </section>
+
     <h2 class="label-strong section-title">Stretch categories</h2>
     <section class="panel" style="gap:0;padding:8px 20px 16px">
       ${s.stretchCategories.map((c, i) => html`
