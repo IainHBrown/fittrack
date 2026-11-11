@@ -192,6 +192,49 @@ export const DEFAULTS = {
     { id: 'st-coffee', group: 'Staples', name: 'Coffee, double double', note: 'Medium', cal: 190, protein: 3, carbs: 27, fat: 9 },
   ],
 
+  // ---------- XP, levels and badges ----------
+  xp: {
+    session: 100,     // any completed planned session
+    keySession: 150,  // long ride or long run
+    test: 200,        // a baseline test
+    race: 1000,       // race day
+    other: 50,        // an "other activity"
+    pr: 50,           // each lifting personal record
+    sleep: 20,        // sleep score logged
+    supps: 20,        // every supplement ticked
+    water: 20,        // water goal hit
+    badge: [50, 100, 200], // bronze, silver, gold
+  },
+  // Level names and the XP needed to reach each one.
+  levels: [
+    { name: 'Rookie', xp: 0 },
+    { name: 'Trainee', xp: 1500 },
+    { name: 'Amateur', xp: 5000 },
+    { name: 'Athlete', xp: 10000 },
+    { name: 'Competitor', xp: 18000 },
+    { name: 'Contender', xp: 28000 },
+    { name: 'Challenger', xp: 42000 },
+    { name: 'Elite', xp: 60000 },
+    { name: 'Pro', xp: 85000 },
+    { name: 'Ironman', xp: 120000 },
+  ],
+  // Badges: each has three tiers (bronze, silver, gold) on one measured value.
+  badges: [
+    { id: 'sessions', name: 'Sessions', metric: 'sessions', unit: '', tiers: [25, 150, 500] },
+    { id: 'swim-km', name: 'Swim distance', metric: 'swimKm', unit: 'km', tiers: [5, 30, 100] },
+    { id: 'bike-km', name: 'Bike distance', metric: 'bikeKm', unit: 'km', tiers: [250, 1500, 5000] },
+    { id: 'run-km', name: 'Run distance', metric: 'runKm', unit: 'km', tiers: [50, 300, 1000] },
+    { id: 'long-swim', name: 'Longest swim', metric: 'longestSwimM', unit: 'm', tiers: [400, 1000, 1900] },
+    { id: 'long-ride', name: 'Longest ride', metric: 'longestRideKm', unit: 'km', tiers: [30, 60, 90] },
+    { id: 'long-run', name: 'Longest run', metric: 'longestRunKm', unit: 'km', tiers: [5, 10, 21.1] },
+    { id: 'prs', name: 'Lifting PRs', metric: 'prs', unit: '', tiers: [5, 25, 75] },
+    { id: 'tests', name: 'Baseline tests', metric: 'tests', unit: '', tiers: [3, 9, 15] },
+    { id: 'good-nights', name: 'Good nights', metric: 'goodNights', unit: '', tiers: [10, 50, 200] },
+    { id: 'sleep-streak', name: 'Sleep streak', metric: 'sleepStreak', unit: 'days', tiers: [7, 30, 100] },
+    { id: 'supps-streak', name: 'Supplement streak', metric: 'suppsStreak', unit: 'days', tiers: [7, 30, 100] },
+    { id: 'water-streak', name: 'Water streak', metric: 'waterStreak', unit: 'days', tiers: [7, 30, 100] },
+  ],
+
   // ---------- stretching ----------
   stretchCategories: ['Warm-up', 'Activation', 'Mobility', 'Recovery', 'Roller', 'Cool-down'],
 

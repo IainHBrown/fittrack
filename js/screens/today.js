@@ -6,6 +6,8 @@ import { getDay, setOverride, getLogs } from '../db.js';
 import { seedLifting, getExercises, getRoutines, getActiveWorkout, makeItem, targetText } from '../lift-service.js';
 import { waterTotal, waterGoal, fmtLitres, suppsTicked, sleepLevel } from '../logic/day.js';
 import { foodTotals, foodTargets } from '../logic/food.js';
+import { getGame } from '../game-service.js';
+import { levelBox, streakStrip } from '../ui/game.js';
 import { getPlanState, sessionsOn, dayTypeOn, currentWeekIndex } from '../plan-service.js';
 import { PHASE_LABEL, KIND_LABEL, SPORT_LABEL } from '../engine/plan.js';
 import { targetFor } from '../engine/zones.js';
@@ -162,6 +164,7 @@ export async function render(el, ctx) {
   const water = waterTotal(day);
   const wGoal = waterGoal(s, day);
   const supps = suppsTicked(day, s.supplements);
+  const game = await getGame();
   const food = foodTotals(day);
   const foodTarget = foodTargets(s, day.dayType);
   const level = sleepLevel(day.sleep, s);
@@ -177,6 +180,7 @@ export async function render(el, ctx) {
         <span class="label" style="font-size:17px">${fmtDayLong(today)}</span>
         <h1 class="title">Today</h1>
       </div>
+      ${levelBox(game)}
     </header>
 
     ${workoutArea(state, today, lift)}
@@ -236,6 +240,8 @@ export async function render(el, ctx) {
         value: food.cal ? { text: food.cal.toLocaleString('en-CA') } : { node: html`<span style="color:var(--ash)">0</span>`, text: '0' },
       })}
     </div>
+
+    ${streakStrip(game.streaks)}
 
     ${goal ? html`
       <div style="display:flex;flex-direction:column;gap:10px">

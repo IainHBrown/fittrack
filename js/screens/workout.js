@@ -258,6 +258,7 @@ function openFinishSheet(w, exercises) {
           if (w.easy) rec.easy = true;
           done.push(rec);
         }
+        const xpEarned = settings().xp.session + prs.length * settings().xp.pr;
         await putLog({
           id: newId('l'), createdAt: Date.now(),
           sessionId: w.sessionId, date: w.date, sport: 'lift', kind: w.sessionKind,
@@ -269,7 +270,7 @@ function openFinishSheet(w, exercises) {
         });
         await clearActiveWorkout();
         close();
-        toast(prs.length ? `PR · ${prs[0]}` : `${w.name} done`);
+        toast(prs.length ? `PR · ${prs[0]} · +${xpEarned} XP` : `${w.name} done · +${xpEarned} XP`);
         location.hash = '#/train';
       },
     });

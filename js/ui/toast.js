@@ -15,6 +15,9 @@ export function toast(text) {
   }
   mount(el, html`${icon('check', 26, 3)}<span>${text}</span>`);
   clearTimeout(timer);
-  requestAnimationFrame(() => el.classList.add('open'));
+  // force a layout so the slide-in runs, then open at once (a delayed open
+  // could land after the hide timer and leave the banner stuck on screen)
+  void el.offsetWidth;
+  el.classList.add('open');
   timer = setTimeout(() => el.classList.remove('open'), 1600);
 }

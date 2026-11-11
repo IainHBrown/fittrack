@@ -98,6 +98,20 @@ export async function render(el, ctx) {
       <p class="small" style="padding:8px 0 10px">The quick-add list is edited on the Food tab with the gear beside each item.</p>
     </section>
 
+    <h2 class="label-strong section-title">XP</h2>
+    <section class="panel" style="gap:0;padding:8px 20px">
+      ${numField('Session', 'Any planned session or lift', 'xp.session', s.xp.session, 'XP', 0, 5000)}
+      ${numField('Long ride or run', '', 'xp.keySession', s.xp.keySession, 'XP', 0, 5000)}
+      ${numField('Baseline test', '', 'xp.test', s.xp.test, 'XP', 0, 5000)}
+      ${numField('Race day', '', 'xp.race', s.xp.race, 'XP', 0, 50000)}
+      ${numField('Other activity', '', 'xp.other', s.xp.other, 'XP', 0, 5000)}
+      ${numField('Lifting PR', 'Each new record', 'xp.pr', s.xp.pr, 'XP', 0, 5000)}
+      ${numField('Sleep logged', 'Per day', 'xp.sleep', s.xp.sleep, 'XP', 0, 1000)}
+      ${numField('Supplements done', 'Per day', 'xp.supps', s.xp.supps, 'XP', 0, 1000)}
+      ${numField('Water goal hit', 'Per day', 'xp.water', s.xp.water, 'XP', 0, 1000)}
+      <p class="small" style="padding:8px 0 10px">XP is recalculated from your whole history, so changing a value updates your total straight away.</p>
+    </section>
+
     <h2 class="label-strong section-title">Stretch categories</h2>
     <section class="panel" style="gap:0;padding:8px 20px 16px">
       ${s.stretchCategories.map((c, i) => html`

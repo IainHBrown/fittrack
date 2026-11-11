@@ -494,3 +494,45 @@ select.input, input[type="date"].input {
   color: var(--ash); border: 1px solid var(--line-strong); border-radius: 5px; padding: 0 4px; margin-left: 6px; vertical-align: 2px;
 }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+/* ================= Stage 5: streaks, levels, badges, charts ================= */
+:root { --bronze: #C17F45; --silver: #C3C7CD; --gold: #F0C63E; }
+
+.levelbox { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; text-decoration: none; color: inherit; }
+.xpbar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.xpbar > i { display: block; height: 100%; background: var(--volt); transition: width 0.5s var(--ease-out); }
+
+.streak-num { font-size: 40px; }
+.stat.risk .num, .stat.risk .risk-text { color: var(--flare); }
+.stat.zero .num { color: var(--ash); }
+
+.badges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 8px; }
+.badge { display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; min-width: 0; }
+.badge-name { font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.05; }
+.badge[data-tier="0"] .badge-name { color: var(--ash); }
+.badge .xpbar { width: 70%; height: 4px; }
+.pips { display: flex; gap: 3px; }
+.pips > i { width: 12px; height: 4px; border-radius: 1px; background: var(--track); }
+
+.totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.totals .stat { padding: 0 10px; }
+.totals .stat .num { font-size: 30px; }
+
+.celebrate {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(11, 11, 12, 0.9);
+  opacity: 0; transition: opacity 0.18s;
+}
+.celebrate.open { opacity: 1; }
+.celebrate-card { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px; transform: scale(0.7); transition: transform 0.35s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.celebrate.open .celebrate-card { transform: none; }
+.celebrate-burst {
+  position: absolute; width: 60vmin; height: 60vmin; border-radius: 50%;
+  border: 14px solid var(--volt); opacity: 0;
+}
+.celebrate.open .celebrate-burst { animation: burst 0.7s var(--ease-out) forwards; }
+@keyframes burst {
+  0% { transform: scale(0.2); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; border-width: 2px; }
+}

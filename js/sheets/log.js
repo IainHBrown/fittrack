@@ -10,6 +10,7 @@ import { settings } from '../state.js';
 import { paceText, stageFromSwimTest } from '../engine/zones.js';
 import { fmtMin } from '../ui/session.js';
 import { setSwimStage } from '../plan-service.js';
+import { logXp } from '../engine/game.js';
 
 const UNIT = { swim: 'm', bike: 'km', run: 'km' };
 const num = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v));
@@ -148,7 +149,7 @@ export function openLogSheet({ session = null, log = null, swimStage = 1 }, onCh
         close();
 
         // what the log changes, most important message first
-        let message = `${rec.title} done`;
+        let message = `${rec.title} done · +${logXp(rec, s.xp)} XP`;
         if (!log && session) {
           const stages = s.swimStages.length;
           if (session.kind === 'swim-test' && rec.distance > 0) {

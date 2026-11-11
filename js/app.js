@@ -6,6 +6,8 @@ import { dayKey } from './lib/dates.js';
 import { loadSettings } from './state.js';
 import { requestPersistence } from './db.js';
 import { icon } from './ui/icons.js';
+import { celebrate } from './ui/celebrate.js';
+import { getGame, newMoments } from './game-service.js';
 import { render as renderToday } from './screens/today.js';
 import { render as renderSleep } from './screens/sleep.js';
 import { render as renderMe } from './screens/me.js';
@@ -64,6 +66,20 @@ function currentRoute() {
 /** Re-draw the current screen in place (no entry animation). */
 async function refresh(extra = {}) {
   if (view && renderFn) await renderFn(view, { refresh, params, ...extra });
+  checkMoments();
+}
+
+/** After anything changes, see whether a level-up or new badge should be celebrated. */
+let checking = false;
+async function checkMoments() {
+  if (checking) return;
+  checking = true;
+  try {
+    const moments = await newMoments(await getGame());
+    // let the "logged" banner land first, then celebrate
+    if (moments.length) setTimeout(() => celebrate(moments), 700);
+  } catch { /* never let a celebration break the app */ }
+  checking = false;
 }
 
 async function navigate() {
@@ -83,6 +99,7 @@ async function navigate() {
   screenEl.replaceChildren(next);
   screenEl.scrollTop = 0;
   view = next;
+  checkMoments();
 }
 
 /** If the date has rolled over since we last drew, start the new day. */
