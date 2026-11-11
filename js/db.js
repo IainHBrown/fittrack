@@ -106,6 +106,49 @@ export async function setOverride(id, patch) {
   return request('overrides', 'readwrite', (s) => s.put(cur));
 }
 
+// ---------- backup: read or replace everything ----------
+
+export const STORES = ['kv', 'days', 'logs', 'overrides', 'exercises', 'stretches', 'foods'];
+
+/** Every record in every store. `kv` becomes a list of { key, value }. */
+export async function dumpAll() {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES, 'readonly');
+    const out = {};
+    for (const name of STORES) {
+      const store = tx.objectStore(name);
+      const values = store.getAll();
+      if (name === 'kv') {
+        const keys = store.getAllKeys();
+        tx.addEventListener('complete', () => { out.kv = keys.result.map((key, i) => ({ key, value: values.result[i] })); });
+      } else {
+        tx.addEventListener('complete', () => { out[name] = values.result; });
+      }
+    }
+    tx.oncomplete = () => resolve(out);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/** Replace everything with a backup, in one all-or-nothing transaction. */
+export async function restoreAll(stores) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES, 'readwrite');
+    for (const name of STORES) {
+      const store = tx.objectStore(name);
+      store.clear();
+      for (const item of stores[name] || []) {
+        if (name === 'kv') store.put(item.value, item.key); else store.put(item);
+      }
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
 /** Ask the browser not to evict our data when storage is tight. */
 export async function requestPersistence() {
   try {

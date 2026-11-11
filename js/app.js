@@ -123,6 +123,23 @@ async function start() {
   window.addEventListener('pageshow', checkDayChange);
   setInterval(checkDayChange, 20000);
 
+  // Keep sheets above the iPhone keyboard: publish its height as --kb.
+  const vv = window.visualViewport;
+  if (vv) {
+    const setKeyboard = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--kb', `${kb > 80 ? Math.round(kb) : 0}px`);
+    };
+    vv.addEventListener('resize', setKeyboard);
+    vv.addEventListener('scroll', setKeyboard);
+  }
+  // When a field in a sheet gets focus, bring it into view above the keyboard.
+  document.addEventListener('focusin', (e) => {
+    if (e.target.matches('input, textarea, select') && e.target.closest('.sheet')) {
+      setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+    }
+  });
+
   requestPersistence();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => { /* offline support unavailable */ });

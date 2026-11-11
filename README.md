@@ -3,7 +3,12 @@
 A personal training and health app, built as a Progressive Web App for one iPhone.
 Everything is stored on the phone. There is no login, no server, and nothing paid.
 
-**Status: Stage 4 of 9.** New in Stage 4: food tracking (calories, protein,
+**Status: Stage 6 of 9.** New in Stages 5 and 6: streaks, XP, levels and
+badges, progress charts, a full Settings area (every number and piece of
+wording is editable, each page can be reset to defaults), and export / import
+of all data as one JSON file (Me, Settings, Backup).
+
+Earlier, in Stage 4: New in Stage 4: food tracking (calories, protein,
 carbs, fat) against targets by day type, with a preloaded quick-add list.
 Subway values in that list are built from Subway Canada's published nutrition
 table (June 2026); dining-hall and staple items are rough estimates. Also

@@ -3,7 +3,7 @@
 // the background so the next launch has the newest version.
 // When adding a new file to the app, add it to FILES below.
 
-const CACHE = 'fittrack-v5';
+const CACHE = 'fittrack-v6';
 
 const FILES = [
   './',
@@ -66,6 +66,7 @@ const FILES = [
   'js/sheets/food.js',
   'js/food-service.js',
   'js/logic/food.js',
+  'js/logic/backup.js',
 ];
 
 self.addEventListener('install', (event) => {

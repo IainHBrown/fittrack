@@ -143,9 +143,11 @@
 .sheet-backdrop.open { opacity: 1; }
 .sheet {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
+  /* --kb is the on-screen keyboard's height (set in app.js), so the sheet
+     sits above the keyboard instead of underneath it */
+  left: 0; right: 0; bottom: var(--kb, 0px);
   z-index: 41;
-  max-height: calc(100% - var(--safe-top) - 24px);
+  max-height: calc(100% - var(--safe-top) - 24px - var(--kb, 0px));
   overflow-y: auto;
   background: var(--surface);
   border-radius: 28px 28px 0 0;
