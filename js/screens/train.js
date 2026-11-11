@@ -6,6 +6,7 @@ import { getPlanState, resolvedWeek, currentWeekIndex, setBusyWeek } from '../pl
 import { weekTotals } from '../engine/adjust.js';
 import { PHASE_LABEL, KIND_LABEL, SPORT_LABEL } from '../engine/plan.js';
 import { icon } from '../ui/icons.js';
+import { trainNav } from '../ui/trainnav.js';
 import { sessionRow, otherRow, SPORT_COLOR, fmtMin } from '../ui/session.js';
 import { openSessionSheet } from '../sheets/session.js';
 import { openLogSheet } from '../sheets/log.js';
@@ -49,6 +50,7 @@ export async function render(el, ctx) {
         <h1 class="title">Train</h1>
       </div>
     </header>
+    ${trainNav('plan')}
 
     <div class="cal-nav">
       <button class="iconbtn" data-action="prev" aria-label="Previous week" ${viewWeek === 0 ? 'disabled' : ''}>${icon('left')}</button>
@@ -103,7 +105,6 @@ export async function render(el, ctx) {
     </section>
 
     <button class="btn btn-ghost" data-action="other">${icon('plus', 20, 2.6)} Log other activity</button>
-    <p class="small" style="padding:0 4px">Lifting workouts with weight targets, and your stretch library, arrive in Stage 3.</p>
   `);
 
   const changed = () => ctx.refresh();

@@ -2,7 +2,8 @@
 
 import { html, mount, onAction } from '../lib/dom.js';
 import { dayKey, fmtDayLong, fmtDate, daysBetween } from '../lib/dates.js';
-import { getDay, setOverride } from '../db.js';
+import { getDay, setOverride, getLogs } from '../db.js';
+import { seedLifting, getExercises, getRoutines, getActiveWorkout, makeItem, targetText } from '../lift-service.js';
 import { waterTotal, waterGoal, fmtLitres, suppsTicked, sleepLevel } from '../logic/day.js';
 import { getPlanState, sessionsOn, dayTypeOn, currentWeekIndex } from '../plan-service.js';
 import { PHASE_LABEL, KIND_LABEL, SPORT_LABEL } from '../engine/plan.js';
@@ -44,9 +45,10 @@ function messagePanel(tag, headline, text, color = 'var(--volt)') {
 }
 
 /** The big panel for the main session of the day. */
-function heroSession(s, state, weekLabel) {
+function heroSession(s, state, weekLabel, lift) {
   const t = targetFor(s.sport, s.zone, state.zones, state.settings.zoneEffort);
   const color = SPORT_COLOR[s.sport];
+  const isLift = s.sport === 'lift' && lift && lift.items.length > 0;
   return html`
     <section class="panel">
       <div class="tagrow" style="justify-content:space-between">
@@ -65,12 +67,43 @@ function heroSession(s, state, weekLabel) {
           </div>`}
       </button>
       ${t ? html`<div class="target"><span class="label-strong" style="font-size:17px">${t.label}</span><span class="body-2">${t.detail}</span></div>` : ''}
-      <p class="body-2">${s.desc}</p>
-      <button class="btn" data-action="log" data-id="${s.id}">${icon('check', 22, 3)} Log session</button>
+      ${isLift ? html`
+        <div>
+          ${lift.items.map((it) => html`
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid var(--line)">
+              <span style="font-size:15px;font-weight:500">${it.name}</span>
+              <span class="label-strong" style="font-size:19px;letter-spacing:0.03em;white-space:nowrap">${it.text}</span>
+            </div>`)}
+        </div>
+        ${s.easy ? html`<p class="body-2">Easy day: targets are about 10% lighter.</p>` : ''}
+        <a class="btn" href="#/workout/${lift.key}/${encodeURIComponent(s.id)}">${icon('lift', 24, 2.6)} ${lift.active ? 'Resume workout' : 'Start workout'}</a>
+      ` : html`
+        <p class="body-2">${s.desc}</p>
+        <button class="btn" data-action="log" data-id="${s.id}">${icon('check', 22, 3)} Log session</button>`}
     </section>`;
 }
 
-function workoutArea(state, today) {
+/** The session shown big: a long session, race or test first, then the first of the day. */
+function mainSession(list) {
+  const open = list.filter((x) => x.status === 'planned');
+  return open.find((x) => ['bike-long', 'run-long', 'race'].includes(x.kind) || x.test) || open[0] || null;
+}
+
+/** For a lifting session: the routine's exercises with today's targets. */
+async function liftPreview(s) {
+  await seedLifting();
+  const key = s.kind.split('-')[1];
+  const [exercises, routines, logs, active] = await Promise.all([getExercises(), getRoutines(), getLogs(), getActiveWorkout()]);
+  const routine = routines[key];
+  const items = (routine ? routine.items : []).filter((it) => exercises.has(it.exId)).map((it) => {
+    const ex = exercises.get(it.exId);
+    const item = makeItem(ex, it, logs, s.easy);
+    return { name: ex.name, text: targetText(ex, { ...item.target, sets: it.sets }) };
+  });
+  return { key, items, active: !!active };
+}
+
+function workoutArea(state, today, lift) {
   const { plan, settings: s } = state;
   if (!plan.weeks.length) {
     return messagePanel('Training plan', 'No goal set', 'Add a goal event with a future date in Me, then Settings, to build your plan.');
@@ -84,13 +117,11 @@ function workoutArea(state, today) {
   const week = plan.weeks[currentWeekIndex(state)];
   const weekLabel = `Week ${week.index + 1} · ${KIND_LABEL[week.kind] || PHASE_LABEL[week.phase]}`;
   const list = sessionsOn(state, today);
-  const open = list.filter((x) => x.status === 'planned');
-  // main session: a long session, race or test first, then the first of the day
-  const main = open.find((x) => ['bike-long', 'run-long', 'race'].includes(x.kind) || x.test) || open[0];
+  const main = mainSession(list);
   const rest = list.filter((x) => x !== main);
 
   let top;
-  if (main) top = heroSession(main, state, weekLabel);
+  if (main) top = heroSession(main, state, weekLabel, lift);
   else if (list.some((x) => x.status === 'done')) top = messagePanel(weekLabel, 'Done for today', 'Everything planned for today is logged. Eat, drink, recover.');
   else if (list.length) top = messagePanel(weekLabel, 'Nothing left today', 'Today\'s sessions were skipped or dropped. Tomorrow is a new day.', 'var(--ash)');
   else top = messagePanel(weekLabel, 'Rest day', 'No training today. Recovery is when the fitness is built.', 'var(--ash)');
@@ -134,6 +165,8 @@ export async function render(el, ctx) {
   const goal = state.plan.goal;
   const todays = sessionsOn(state, today);
   const canEase = level === 'low' && todays.some((x) => x.status === 'planned' && !x.easy && x.sport !== 'race');
+  const main = today >= (state.plan.start || '9999') ? mainSession(todays) : null;
+  const lift = main && main.sport === 'lift' ? await liftPreview(main) : null;
 
   mount(el, html`
     <header class="head">
@@ -143,7 +176,7 @@ export async function render(el, ctx) {
       </div>
     </header>
 
-    ${workoutArea(state, today)}
+    ${workoutArea(state, today, lift)}
 
     ${day.sleep == null ? html`
       <button class="rowlink" data-action="sleep">

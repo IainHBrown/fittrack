@@ -3,6 +3,7 @@
 import { html, mount, onAction } from '../lib/dom.js';
 import { icon } from '../ui/icons.js';
 import { settings, setSetting } from '../state.js';
+import { getAll, putItem } from '../db.js';
 
 function numField(label, hint, path, value, unit, min, max, float = false) {
   return html`
@@ -73,6 +74,25 @@ export async function render(el, ctx) {
       ${numField('Ease runs for', 'Days after a flagged knee log', 'plan.knee.reduceDays', s.plan.knee.reduceDays, 'd', 1, 30)}
     </section>
 
+    <h2 class="label-strong section-title">Lifting</h2>
+    <section class="panel" style="gap:0;padding:8px 20px">
+      ${numField('Upper-body jump', 'Added after hitting every rep', 'lifting.incUpper', s.lifting.incUpper, 'lb', 1, 50, true)}
+      ${numField('Lower-body jump', 'Added after hitting every rep', 'lifting.incLower', s.lifting.incLower, 'lb', 1, 50, true)}
+      ${numField('Deload', 'Drop after missing the same weight twice', 'lifting.deloadPct', s.lifting.deloadPct, '%', 1, 50)}
+      ${numField('Round weights to', '', 'lifting.round', s.lifting.round, 'lb', 1, 25, true)}
+      <p class="small" style="padding:8px 0 10px">Routines, exercises and per-exercise jumps are edited in Train, then Lifting.</p>
+    </section>
+
+    <h2 class="label-strong section-title">Stretch categories</h2>
+    <section class="panel" style="gap:0;padding:8px 20px 16px">
+      ${s.stretchCategories.map((c, i) => html`
+        <div class="supp-edit" style="grid-template-columns:minmax(0,1fr) 44px">
+          <input class="input input-wide" type="text" maxlength="20" data-cat="${i}" value="${c}" aria-label="Category name">
+          <button class="iconbtn" data-action="removeCat" data-i="${i}" aria-label="Remove ${c}">${icon('trash', 20)}</button>
+        </div>`)}
+      <button class="btn btn-ghost" style="margin-top:10px" data-action="addCat">${icon('plus', 20, 2.6)} Add category</button>
+    </section>
+
     <h2 class="label-strong section-title">Sleep</h2>
     <section class="panel" style="gap:0;padding:8px 20px">
       ${numField('Good night score', 'At or above this counts as a good night', 'sleep.goal', s.sleep.goal, '', 1, 100)}
@@ -116,6 +136,17 @@ export async function render(el, ctx) {
     } else if (t.dataset.dayPath) {
       await setSetting(t.dataset.dayPath, Number(t.value));
       ctx.refresh();
+    } else if (t.dataset.cat != null) {
+      // renaming a category also renames it on the stretches that use it
+      const list = [...settings().stretchCategories];
+      const i = Number(t.dataset.cat);
+      const v = t.value.trim();
+      if (!v || list.includes(v)) { ctx.refresh(); return; }
+      const old = list[i];
+      list[i] = v;
+      for (const st of await getAll('stretches')) if (st.category === old) await putItem('stretches', { ...st, category: v });
+      await setSetting('stretchCategories', list);
+      ctx.refresh();
     } else if (t.dataset.goal != null) {
       const list = structuredClone(settings().goals);
       const g = list[Number(t.dataset.goal)];
@@ -153,6 +184,24 @@ export async function render(el, ctx) {
   };
 
   onAction(el, {
+    addCat: async () => {
+      const list = [...settings().stretchCategories];
+      let name = 'New category';
+      for (let n = 2; list.includes(name); n++) name = `New category ${n}`;
+      list.push(name);
+      await setSetting('stretchCategories', list);
+      await ctx.refresh();
+      const inputs = el.querySelectorAll('[data-cat]');
+      const last = inputs[inputs.length - 1];
+      if (last) { last.focus(); last.select(); }
+    },
+    removeCat: async (t) => {
+      const list = [...settings().stretchCategories];
+      if (list.length <= 1) return; // keep at least one
+      list.splice(Number(t.dataset.i), 1); // stretches keep their old label until re-filed
+      await setSetting('stretchCategories', list);
+      ctx.refresh();
+    },
     addSupp: async () => {
       const list = structuredClone(settings().supplements);
       list.push({ id: `s${Date.now().toString(36)}`, name: 'New supplement', dose: '' });

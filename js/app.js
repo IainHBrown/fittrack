@@ -11,6 +11,11 @@ import { render as renderSleep } from './screens/sleep.js';
 import { render as renderMe } from './screens/me.js';
 import { render as renderSettings } from './screens/settings.js';
 import { render as renderTrain } from './screens/train.js';
+import { render as renderLifting } from './screens/lifting.js';
+import { render as renderRoutine } from './screens/routine.js';
+import { render as renderExercise } from './screens/exercise.js';
+import { render as renderWorkout } from './screens/workout.js';
+import { render as renderStretches } from './screens/stretches.js';
 import { renderFood } from './screens/placeholders.js';
 
 const TABS = [
@@ -21,14 +26,23 @@ const TABS = [
   ['me', 'Me'],
 ];
 
+// A route is matched by its longest prefix; anything after it is passed to
+// the screen as ctx.params (e.g. "#/exercise/bench" -> params ["bench"]).
 const ROUTES = {
   today: renderToday,
   train: renderTrain,
+  'train/lifting': renderLifting,
+  'train/stretches': renderStretches,
+  routine: renderRoutine,
+  exercise: renderExercise,
+  workout: renderWorkout,
   food: renderFood,
   sleep: renderSleep,
   me: renderMe,
   'me/settings': renderSettings,
 };
+// which tab is lit for routes that are not tabs themselves
+const TAB_OF = { routine: 'train', exercise: 'train', workout: 'train' };
 
 const screenEl = document.getElementById('screen');
 const tabbarEl = document.getElementById('tabbar');
@@ -36,27 +50,36 @@ let view = null;      // the current screen's container
 let renderFn = null;  // the current screen's render function
 let shownDay = dayKey();
 
-function currentPath() {
-  const path = location.hash.replace(/^#\/?/, '');
-  return ROUTES[path] ? path : 'today';
+let params = [];      // the current route's parameters
+
+function currentRoute() {
+  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  for (let n = Math.min(2, parts.length); n >= 1; n--) {
+    const path = parts.slice(0, n).join('/');
+    if (ROUTES[path]) return { path, params: parts.slice(n) };
+  }
+  return { path: 'today', params: [] };
 }
 
 /** Re-draw the current screen in place (no entry animation). */
 async function refresh(extra = {}) {
-  if (view && renderFn) await renderFn(view, { refresh, ...extra });
+  if (view && renderFn) await renderFn(view, { refresh, params, ...extra });
 }
 
 async function navigate() {
-  const path = currentPath();
+  const route = currentRoute();
+  const path = route.path;
+  params = route.params;
   renderFn = ROUTES[path];
-  const tab = path.split('/')[0];
+  const first = path.split('/')[0];
+  const tab = TAB_OF[first] || first;
   for (const a of tabbarEl.querySelectorAll('.tab')) {
     if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
   const next = document.createElement('div');
   next.className = 'screen';
-  await renderFn(next, { refresh });
+  await renderFn(next, { refresh, params });
   screenEl.replaceChildren(next);
   screenEl.scrollTop = 0;
   view = next;

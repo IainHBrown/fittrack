@@ -105,11 +105,17 @@ export function openSessionSheet(sessionId, onChange) {
               s.log.hr ? `${s.log.hr} bpm` : '',
               `Knee ${s.log.knee ?? 0}/10`,
             ].filter(Boolean).join(' · ')}</span>
+            ${(s.log.exercises || []).map((e) => html`
+              <span class="body-2">${e.name}: ${e.sets.map((x) => (e.type === 'bodyweight' ? x.reps : `${x.weight}×${x.reps}`)).join(', ')}</span>`)}
+            ${(s.log.prs || []).length ? html`<span class="label-strong" style="color:var(--lift);font-size:17px">PR: ${s.log.prs.join(', ')}</span>` : ''}
             ${s.log.notes ? html`<span class="body-2">${s.log.notes}</span>` : ''}
           </div>
           <button class="btn btn-quiet" data-action="editLog">Edit log</button>` : ''}
 
-        ${open || s.status === 'skipped' || s.status === 'dropped' ? html`
+        ${s.sport === 'lift' && s.status !== 'done' ? html`
+          <a class="btn" data-action="start" href="#/workout/${s.kind.split('-')[1]}/${encodeURIComponent(s.id)}">${icon('lift', 24, 2.6)} Start workout</a>
+          <button class="btn btn-ghost" data-action="log">Mark done without details</button>
+        ` : open || s.status === 'skipped' || s.status === 'dropped' ? html`
           <button class="btn" data-action="log">${icon('check', 22, 3)} ${open ? 'Log session' : 'Log it anyway'}</button>` : ''}
 
         ${open ? html`
@@ -130,6 +136,7 @@ export function openSessionSheet(sessionId, onChange) {
     const act = async (patch) => { await setOverride(sessionId, patch); mode = 'detail'; await draw(); onChange(); };
 
     onAction(body, {
+      start: () => close(), // the link itself opens the workout
       log: async () => {
         const { state, s } = await load();
         openLogSheet({ session: s, swimStage: state.swimStage }, onChange);

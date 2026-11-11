@@ -7,7 +7,10 @@
 //   overrides - changes to planned sessions by session id: { id, status, movedTo, easy, swap }
 
 const DB_NAME = 'fittrack';
-const DB_VERSION = 2;
+//   exercises - the exercise library: { id, name, group, type, increment?, repUnit?, archived? }
+//   stretches - your stretches: { id, name, category, notes, photo (compressed JPEG data URL) }
+
+const DB_VERSION = 3;
 
 let dbPromise = null;
 
@@ -21,6 +24,8 @@ function open() {
         if (!db.objectStoreNames.contains('days')) db.createObjectStore('days', { keyPath: 'date' });
         if (!db.objectStoreNames.contains('logs')) db.createObjectStore('logs', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('overrides')) db.createObjectStore('overrides', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('exercises')) db.createObjectStore('exercises', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('stretches')) db.createObjectStore('stretches', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -72,6 +77,12 @@ export const getLogs = () => request('logs', 'readonly', (s) => s.getAll());
 export const putLog = (log) => request('logs', 'readwrite', (s) => s.put(log));
 export const deleteLog = (id) => request('logs', 'readwrite', (s) => s.delete(id));
 export const newId = (prefix) => `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+// ---------- generic helpers for simple keyed stores (exercises, stretches) ----------
+
+export const getAll = (store) => request(store, 'readonly', (s) => s.getAll());
+export const putItem = (store, item) => request(store, 'readwrite', (s) => s.put(item));
+export const deleteItem = (store, id) => request(store, 'readwrite', (s) => s.delete(id));
 
 // ---------- plan overrides (skip, move, make easy, swap) ----------
 

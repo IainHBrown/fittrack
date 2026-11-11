@@ -3,7 +3,9 @@
 A personal training and health app, built as a Progressive Web App for one iPhone.
 Everything is stored on the phone. There is no login, no server, and nothing paid.
 
-**Status: Stage 2 of 9.** Working now: Today screen, sleep score with calendar and
+**Status: Stage 3 of 9.** New in Stage 3: lifting workouts with automatic
+weight targets (progressive overload), routine editing, per-exercise history
+and records, and a stretch library with photos. Also working: Today screen, sleep score with calendar and
 stats, water, supplements, daily reset, offline use, the training plan engine
 (phases, weekly volume, day-by-day schedule, baseline tests and zones), goal
 events, session logging, skip / move, busy-week mode, knee protection, and
@@ -77,6 +79,8 @@ js/engine/plan.js       builds the whole training plan from settings
 js/engine/schedule.js   places a week's sessions on days (the rules live here)
 js/engine/adjust.js     skips, moves, busy week, knee protection, statuses
 js/engine/zones.js      heart-rate and pace zones from baseline tests
+js/engine/overload.js   lifting targets: add weight, repeat, or deload
+js/lift-service.js      exercise library, routines, the workout in progress
 js/ui/                  rings, icons, bottom sheet, toast, session rows
 js/sheets/              water, supplements, sleep, session and log sheets
 js/screens/             one file per screen
@@ -94,6 +98,12 @@ IndexedDB database `fittrack`:
   entries and supplement ticks. Water, supplements and food "reset at midnight"
   because a new date starts a new record; old records are never deleted.
 - `logs`: every logged session, test and other activity.
+- `exercises`: the exercise library. Exercises are archived, never deleted, and
+  lifting history lives in `logs`, so swapping or removing an exercise from a
+  routine keeps its history.
+- `stretches`: your stretches, each with a compressed photo.
+- `kv` also holds `routines` (Day A / B / C) and `activeWorkout` (the workout
+  in progress, saved after every tap).
 - `overrides`: changes you made to planned sessions (skipped, moved, made easy,
   swapped to bike), keyed by session id.
 

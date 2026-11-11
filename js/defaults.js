@@ -83,6 +83,68 @@ export const DEFAULTS = {
     { main: '1,900 m continuous (70.3 race distance)', rest: '', m: 1900 },
   ],
 
+  // ---------- lifting ----------
+  lifting: {
+    incUpper: 5,     // lb added after hitting every rep, upper body and core
+    incLower: 10,    // lb added, lower body
+    deloadPct: 10,   // drop after missing the same weight twice
+    round: 5,        // targets are rounded to this many lb
+  },
+
+  // Starting exercise library. Copied into storage on first run; after that,
+  // edit it in the app (Train, then Lifting). Knee-friendly picks for a tall lifter.
+  seedExercises: [
+    { id: 'trapbar', name: 'Trap-bar deadlift', group: 'lower', type: 'weight' },
+    { id: 'boxsquat', name: 'Box squat', group: 'lower', type: 'weight' },
+    { id: 'bench', name: 'Bench press', group: 'upper', type: 'weight' },
+    { id: 'csrow', name: 'Chest-supported row', group: 'upper', type: 'weight' },
+    { id: 'pallof', name: 'Pallof press', group: 'core', type: 'weight' },
+    { id: 'plank', name: 'Plank', group: 'core', type: 'bodyweight', repUnit: 'sec' },
+    { id: 'rdl', name: 'Romanian deadlift', group: 'lower', type: 'weight' },
+    { id: 'splitsquat', name: 'Split squat', group: 'lower', type: 'weight' },
+    { id: 'stepup', name: 'Step-up (low box)', group: 'lower', type: 'weight' },
+    { id: 'ohp', name: 'Overhead press', group: 'upper', type: 'weight' },
+    { id: 'pullup', name: 'Pull-up', group: 'upper', type: 'bodyweight' },
+    { id: 'calf', name: 'Calf raise', group: 'lower', type: 'weight' },
+    { id: 'deadbug', name: 'Dead bug', group: 'core', type: 'bodyweight' },
+    { id: 'inclinedb', name: 'Incline dumbbell press', group: 'upper', type: 'weight' },
+    { id: 'pulldown', name: 'Lat pulldown', group: 'upper', type: 'weight' },
+    { id: 'cablerow', name: 'Seated cable row', group: 'upper', type: 'weight' },
+    { id: 'facepull', name: 'Face pull', group: 'upper', type: 'weight' },
+    { id: 'sideplank', name: 'Side plank', group: 'core', type: 'bodyweight', repUnit: 'sec' },
+    { id: 'hipthrust', name: 'Hip thrust', group: 'lower', type: 'weight' },
+    { id: 'legcurl', name: 'Leg curl', group: 'lower', type: 'weight' },
+    { id: 'landmine', name: 'Landmine press', group: 'upper', type: 'weight' },
+    { id: 'dbrow', name: 'Dumbbell row', group: 'upper', type: 'weight' },
+  ],
+  seedRoutines: {
+    A: { name: 'Full body A', items: [
+      { exId: 'trapbar', sets: 3, reps: 5 },
+      { exId: 'bench', sets: 3, reps: 6 },
+      { exId: 'csrow', sets: 3, reps: 8 },
+      { exId: 'pallof', sets: 3, reps: 10 },
+      { exId: 'plank', sets: 3, reps: 45 },
+    ] },
+    B: { name: 'Full body B', items: [
+      { exId: 'rdl', sets: 3, reps: 8 },
+      { exId: 'splitsquat', sets: 3, reps: 8 },
+      { exId: 'ohp', sets: 3, reps: 6 },
+      { exId: 'pullup', sets: 3, reps: 6 },
+      { exId: 'calf', sets: 3, reps: 12 },
+      { exId: 'deadbug', sets: 3, reps: 10 },
+    ] },
+    C: { name: 'Upper body C', items: [
+      { exId: 'inclinedb', sets: 3, reps: 8 },
+      { exId: 'pulldown', sets: 3, reps: 10 },
+      { exId: 'cablerow', sets: 3, reps: 10 },
+      { exId: 'facepull', sets: 3, reps: 12 },
+      { exId: 'sideplank', sets: 3, reps: 30 },
+    ] },
+  },
+
+  // ---------- stretching ----------
+  stretchCategories: ['Warm-up', 'Activation', 'Mobility', 'Recovery', 'Roller', 'Cool-down'],
+
   // Session names and instructions. {curly} parts are filled in by the plan.
   library: {
     'bike-long': { title: 'Long ride', zone: 'z2', desc: "Steady and conversational the whole way. Keep cadence at 85-95 rpm in a light gear: spin, don't grind, to keep load off your knees." },
