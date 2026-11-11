@@ -10,7 +10,8 @@ import { render as renderToday } from './screens/today.js';
 import { render as renderSleep } from './screens/sleep.js';
 import { render as renderMe } from './screens/me.js';
 import { render as renderSettings } from './screens/settings.js';
-import { renderTrain, renderFood } from './screens/placeholders.js';
+import { render as renderTrain } from './screens/train.js';
+import { renderFood } from './screens/placeholders.js';
 
 const TABS = [
   ['today', 'Today'],

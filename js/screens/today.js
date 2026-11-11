@@ -2,14 +2,19 @@
 
 import { html, mount, onAction } from '../lib/dom.js';
 import { dayKey, fmtDayLong, fmtDate, daysBetween } from '../lib/dates.js';
-import { getDay } from '../db.js';
-import { settings } from '../state.js';
-import { waterTotal, waterGoal, fmtLitres, suppsTicked, sleepLevel, nextGoal } from '../logic/day.js';
+import { getDay, setOverride } from '../db.js';
+import { waterTotal, waterGoal, fmtLitres, suppsTicked, sleepLevel } from '../logic/day.js';
+import { getPlanState, sessionsOn, dayTypeOn, currentWeekIndex } from '../plan-service.js';
+import { PHASE_LABEL, KIND_LABEL, SPORT_LABEL } from '../engine/plan.js';
+import { targetFor } from '../engine/zones.js';
 import { ringSVG } from '../ui/ring.js';
 import { icon } from '../ui/icons.js';
+import { sessionRow, sportTile, SPORT_COLOR } from '../ui/session.js';
 import { openWaterSheet } from '../sheets/water.js';
 import { openSuppsSheet } from '../sheets/supps.js';
 import { openSleepSheet } from '../sheets/sleep.js';
+import { openSessionSheet } from '../sheets/session.js';
+import { openLogSheet } from '../sheets/log.js';
 
 /** Ring centre text shrinks a little as the value gets longer. */
 const valSize = (text) => (String(text).length <= 2 ? 32 : String(text).length <= 4 ? 28 : 25);
@@ -25,37 +30,110 @@ function ringButton({ id, action, label, value, ring, pulse }) {
     </button>`;
 }
 
-/** The workout panel. Until the plan engine exists it shows when the plan starts. */
-function workoutPanel(s, today) {
-  const untilStart = daysBetween(today, s.plan.startDate);
-  const headline = untilStart > 1 ? `Starts in ${untilStart} days`
-    : untilStart === 1 ? 'Starts tomorrow'
-    : untilStart === 0 ? 'Starts today' : 'Plan in progress';
+/** A plain panel with a headline, for days without a session to show. */
+function messagePanel(tag, headline, text, color = 'var(--volt)') {
   return html`
     <section class="panel">
       <div class="tagrow">
-        <div class="tile">${icon('calendar', 22, 2.4)}</div>
-        <span class="label-strong volt">Training plan</span>
+        <div class="tile" style="--c:${color}">${icon('calendar', 22, 2.4)}</div>
+        <span class="label-strong" style="color:${color}">${tag}</span>
       </div>
       <h2 class="hero">${headline}</h2>
-      <p class="body-2">
-        ${untilStart >= 0
-          ? `Your plan begins ${fmtDayLong(s.plan.startDate)} with two easy weeks, then baseline tests.`
-          : 'Your sessions will show here once the plan engine is added in Stage 2.'}
-      </p>
+      <p class="body-2">${text}</p>
     </section>`;
+}
+
+/** The big panel for the main session of the day. */
+function heroSession(s, state, weekLabel) {
+  const t = targetFor(s.sport, s.zone, state.zones, state.settings.zoneEffort);
+  const color = SPORT_COLOR[s.sport];
+  return html`
+    <section class="panel">
+      <div class="tagrow" style="justify-content:space-between">
+        <div class="tagrow">
+          ${sportTile(s)}
+          <span class="label-strong" style="color:${color}">${SPORT_LABEL[s.sport]}</span>
+        </div>
+        <span class="label">${weekLabel}</span>
+      </div>
+      <button data-action="session" data-id="${s.id}" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;width:100%" aria-label="Open ${s.title}">
+        <h2 class="hero" style="font-size:${s.title.length > 11 ? 50 : 64}px">${s.title}</h2>
+        ${s.kind === 'race' ? '' : html`
+          <div style="text-align:right;flex-shrink:0">
+            <div class="num" style="font-size:40px">${s.durationMin}</div>
+            <div class="label">min</div>
+          </div>`}
+      </button>
+      ${t ? html`<div class="target"><span class="label-strong" style="font-size:17px">${t.label}</span><span class="body-2">${t.detail}</span></div>` : ''}
+      <p class="body-2">${s.desc}</p>
+      <button class="btn" data-action="log" data-id="${s.id}">${icon('check', 22, 3)} Log session</button>
+    </section>`;
+}
+
+function workoutArea(state, today) {
+  const { plan, settings: s } = state;
+  if (!plan.weeks.length) {
+    return messagePanel('Training plan', 'No goal set', 'Add a goal event with a future date in Me, then Settings, to build your plan.');
+  }
+  const untilStart = daysBetween(today, plan.start);
+  if (untilStart > 0) {
+    return messagePanel('Training plan', untilStart === 1 ? 'Starts tomorrow' : `Starts in ${untilStart} days`,
+      `Your plan begins ${fmtDayLong(plan.start)} with ${s.plan.easyWeeks} easy weeks, then baseline tests. Open Train to look ahead.`);
+  }
+
+  const week = plan.weeks[currentWeekIndex(state)];
+  const weekLabel = `Week ${week.index + 1} · ${KIND_LABEL[week.kind] || PHASE_LABEL[week.phase]}`;
+  const list = sessionsOn(state, today);
+  const open = list.filter((x) => x.status === 'planned');
+  // main session: a long session, race or test first, then the first of the day
+  const main = open.find((x) => ['bike-long', 'run-long', 'race'].includes(x.kind) || x.test) || open[0];
+  const rest = list.filter((x) => x !== main);
+
+  let top;
+  if (main) top = heroSession(main, state, weekLabel);
+  else if (list.some((x) => x.status === 'done')) top = messagePanel(weekLabel, 'Done for today', 'Everything planned for today is logged. Eat, drink, recover.');
+  else if (list.length) top = messagePanel(weekLabel, 'Nothing left today', 'Today\'s sessions were skipped or dropped. Tomorrow is a new day.', 'var(--ash)');
+  else top = messagePanel(weekLabel, 'Rest day', 'No training today. Recovery is when the fitness is built.', 'var(--ash)');
+
+  return html`${top}${rest.length ? html`<div>${rest.map((x) => sessionRow(x, state))}</div>` : ''}`;
+}
+
+/** Phase bar under the countdown: Base / Build / Peak / Taper with progress. */
+function phaseBar(state) {
+  const { plan } = state;
+  if (!plan.phases) return '';
+  const now = state.today < plan.start ? -1 : currentWeekIndex(state);
+  let startAt = 0;
+  return html`
+    <div class="phasebar">
+      ${['base', 'build', 'peak', 'taper'].filter((ph) => plan.phases[ph] > 0).map((ph) => {
+        const size = plan.phases[ph];
+        const done = Math.max(0, Math.min(size, now + 1 - startAt));
+        const current = now >= startAt && now < startAt + size;
+        startAt += size;
+        return html`
+          <div style="flex-grow:${size}">
+            <div class="bar"><i style="width:${(done / size) * 100}%"></i></div>
+            <span class="label ${current ? 'on' : ''}">${size >= 4 ? PHASE_LABEL[ph] : PHASE_LABEL[ph].slice(0, 2)}</span>
+          </div>`;
+      })}
+    </div>`;
 }
 
 export async function render(el, ctx) {
   const today = dayKey();
-  const s = settings();
+  const state = await getPlanState();
+  const s = state.settings;
   const day = await getDay(today);
+  day.dayType = dayTypeOn(state, today); // long training days get the higher water goal
 
   const water = waterTotal(day);
   const wGoal = waterGoal(s, day);
   const supps = suppsTicked(day, s.supplements);
   const level = sleepLevel(day.sleep, s);
-  const goal = nextGoal(s.goals, today);
+  const goal = state.plan.goal;
+  const todays = sessionsOn(state, today);
+  const canEase = level === 'low' && todays.some((x) => x.status === 'planned' && !x.easy && x.sport !== 'race');
 
   mount(el, html`
     <header class="head">
@@ -65,7 +143,7 @@ export async function render(el, ctx) {
       </div>
     </header>
 
-    ${workoutPanel(s, today)}
+    ${workoutArea(state, today)}
 
     ${day.sleep == null ? html`
       <button class="rowlink" data-action="sleep">
@@ -78,12 +156,13 @@ export async function render(el, ctx) {
       </button>` : ''}
 
     ${level === 'low' ? html`
-      <div class="rowlink" role="note">
+      <div class="notice" role="note">
         <div class="tile" style="--c:var(--flare)">${icon('sleep', 22, 2.4)}</div>
         <div class="rowlink-main">
           <span class="label-strong flare" style="font-size:17px">Low sleep score</span>
-          <span class="body-2">Under ${s.sleep.lowBelow}. Keep today's training easy.</span>
+          <span class="body-2">Under ${s.sleep.lowBelow}. ${canEase ? 'Consider an easy day.' : 'Keep today easy.'}</span>
         </div>
+        ${canEase ? html`<button class="btn btn-quiet" data-action="easeAll">Make it easy</button>` : ''}
       </div>` : ''}
 
     <div class="rings">
@@ -123,21 +202,31 @@ export async function render(el, ctx) {
     </div>
 
     ${goal ? html`
-      <div class="countdown">
-        <span class="num">${Math.max(0, daysBetween(today, goal.date))}</span>
-        <div class="head-stack" style="padding-bottom:2px">
-          <span class="label">Days to</span>
-          <span class="label-strong" style="font-size:24px;line-height:1;letter-spacing:0.04em">${goal.name}</span>
-          <span class="small">${fmtDate(goal.date)}</span>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="countdown">
+          <span class="num">${Math.max(0, daysBetween(today, goal.date))}</span>
+          <div class="head-stack" style="padding-bottom:2px">
+            <span class="label">Days to</span>
+            <span class="label-strong" style="font-size:24px;line-height:1;letter-spacing:0.04em">${goal.name}</span>
+            <span class="small">${fmtDate(goal.date)}</span>
+          </div>
         </div>
+        <div style="padding:0 4px">${phaseBar(state)}</div>
       </div>` : ''}
   `);
 
   const changed = (pulse) => ctx.refresh({ pulse });
+  const dayType = day.dayType;
   onAction(el, {
     sleep: () => openSleepSheet(today, changed),
-    water: () => openWaterSheet(today, changed),
+    water: () => openWaterSheet(today, changed, dayType),
     supps: () => openSuppsSheet(today, changed),
     food: () => { location.hash = '#/food'; },
+    session: (t) => openSessionSheet(t.dataset.id, changed),
+    log: (t) => openLogSheet({ session: todays.find((x) => x.id === t.dataset.id), swimStage: state.swimStage }, changed),
+    easeAll: async () => {
+      for (const x of todays.filter((y) => y.status === 'planned' && y.sport !== 'race')) await setOverride(x.id, { easy: true });
+      ctx.refresh();
+    },
   });
 }

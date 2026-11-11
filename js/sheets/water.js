@@ -10,11 +10,13 @@ import { getDay, updateDay } from '../db.js';
 import { settings } from '../state.js';
 import { waterTotal, waterGoal, fmtLitres } from '../logic/day.js';
 
-export function openWaterSheet(date, onChange) {
+/** `dayType` ('long' on long training days) selects the higher water goal. */
+export function openWaterSheet(date, onChange, dayType = null) {
   openSheet('Water', (body) => {
     async function draw(pulse = false) {
       const s = settings();
       const day = await getDay(date);
+      if (dayType) day.dayType = dayType;
       const total = waterTotal(day);
       const goal = waterGoal(s, day);
       const last = day.water.at(-1);
@@ -47,6 +49,7 @@ export function openWaterSheet(date, onChange) {
         let before = 0;
         let goal = 0;
         const day = await updateDay(date, (d) => {
+          if (dayType) d.dayType = dayType;
           before = waterTotal(d);
           goal = waterGoal(s, d);
           d.water.push({ t: Date.now(), ml });

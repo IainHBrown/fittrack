@@ -3,8 +3,13 @@
 A personal training and health app, built as a Progressive Web App for one iPhone.
 Everything is stored on the phone. There is no login, no server, and nothing paid.
 
-**Status: Stage 1 of 9.** Working now: Today screen, sleep score with calendar and
-stats, water, supplements, daily reset, basic settings, offline use.
+**Status: Stage 2 of 9.** Working now: Today screen, sleep score with calendar and
+stats, water, supplements, daily reset, offline use, the training plan engine
+(phases, weekly volume, day-by-day schedule, baseline tests and zones), goal
+events, session logging, skip / move, busy-week mode, knee protection, and
+"other activity" logging.
+
+To see the whole generated plan as a table: `node tools/print-plan.mjs`
 
 ## Run it on this PC
 
@@ -65,10 +70,15 @@ js/app.js               start-up, tab routing, midnight reset
 js/defaults.js          every default value (all editable in Settings)
 js/state.js             settings: saved values layered over the defaults
 js/db.js                IndexedDB storage
+js/plan-service.js      loads plan data from storage for the screens
 js/lib/                 small helpers (HTML templating, dates)
 js/logic/               pure calculations, covered by tests
-js/ui/                  rings, icons, bottom sheet, toast
-js/sheets/              water, supplements and sleep-score sheets
+js/engine/plan.js       builds the whole training plan from settings
+js/engine/schedule.js   places a week's sessions on days (the rules live here)
+js/engine/adjust.js     skips, moves, busy week, knee protection, statuses
+js/engine/zones.js      heart-rate and pace zones from baseline tests
+js/ui/                  rings, icons, bottom sheet, toast, session rows
+js/sheets/              water, supplements, sleep, session and log sheets
 js/screens/             one file per screen
 tests/                  automated tests (npm test)
 tools/serve.mjs         local web server for development
@@ -83,3 +93,10 @@ IndexedDB database `fittrack`:
 - `days`: one record per local date (`YYYY-MM-DD`) with the sleep score, water
   entries and supplement ticks. Water, supplements and food "reset at midnight"
   because a new date starts a new record; old records are never deleted.
+- `logs`: every logged session, test and other activity.
+- `overrides`: changes you made to planned sessions (skipped, moved, made easy,
+  swapped to bike), keyed by session id.
+
+The plan itself is not stored. It is rebuilt from Settings every time, so
+changing a goal event or any number regenerates it, and session ids
+(`weekStart|kind|n`) stay the same so logs remain attached.

@@ -17,11 +17,6 @@ function coming(title, stage, lines, sports) {
     </div>`);
 }
 
-export const renderTrain = coming('Train', 'Coming in stages 2 and 3', [
-  'Stage 2 adds your weekly plan, session logging, skip and move, and busy-week mode.',
-  'Stage 3 adds lifting with automatic weight targets, and your stretch library.',
-], [['swim', 'swim'], ['bike', 'bike'], ['run', 'run'], ['lift', 'lift']]);
-
 export const renderFood = coming('Food', 'Coming in stage 4', [
   'Stage 4 adds calorie and macro tracking with a quick-add list for what you eat at Trent.',
   'Photo estimates come later, in Stage 7.',

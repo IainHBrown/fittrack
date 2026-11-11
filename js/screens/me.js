@@ -19,7 +19,7 @@ export async function render(el) {
         <div class="tile" style="--c:var(--track);color:var(--text)">${icon('gear', 22)}</div>
         <div class="rowlink-main">
           <span class="label-strong" style="font-size:17px">Settings</span>
-          <span class="body-2">Sleep goal, water, supplements</span>
+          <span class="body-2">Goal events, training plan, sleep, water, supplements</span>
         </div>
         <span style="color:var(--ash)">${icon('right', 18, 2.4)}</span>
       </a>

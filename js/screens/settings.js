@@ -4,12 +4,31 @@ import { html, mount, onAction } from '../lib/dom.js';
 import { icon } from '../ui/icons.js';
 import { settings, setSetting } from '../state.js';
 
-function numField(label, hint, path, value, unit, min, max) {
+function numField(label, hint, path, value, unit, min, max, float = false) {
   return html`
     <label class="field">
       <span class="field-label">${label}<span class="field-hint">${hint}</span></span>
-      <input class="input" type="number" inputmode="numeric" data-path="${path}" data-min="${min}" data-max="${max}" value="${value}">
+      <input class="input" type="number" inputmode="${float ? 'decimal' : 'numeric'}" step="${float ? '0.5' : '1'}" data-path="${path}" data-min="${min}" data-max="${max}" ${float ? html`data-float` : ''} value="${value}">
       <span class="field-unit">${unit}</span>
+    </label>`;
+}
+
+function dateField(label, hint, path, value) {
+  return html`
+    <label class="field">
+      <span class="field-label">${label}<span class="field-hint">${hint}</span></span>
+      <input class="input" type="date" data-date-path="${path}" value="${value}">
+    </label>`;
+}
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function dayField(label, hint, path, value) {
+  return html`
+    <label class="field">
+      <span class="field-label">${label}<span class="field-hint">${hint}</span></span>
+      <select class="input" data-day-path="${path}">
+        ${DAYS.map((d, i) => html`<option value="${i}" ${i === value ? html`selected` : ''}>${d}</option>`)}
+      </select>
     </label>`;
 }
 
@@ -21,6 +40,38 @@ export async function render(el, ctx) {
       <a class="backlink label" href="#/me">${icon('left', 18, 2.4)} Me</a>
       <h1 class="title">Settings</h1>
     </div></header>
+
+    <h2 class="label-strong section-title">Goal events</h2>
+    <section class="panel" style="gap:0;padding:8px 20px">
+      ${s.goals.map((g, i) => html`
+        <div class="field" style="flex-direction:column;align-items:stretch;gap:8px;padding:12px 0">
+          <input class="input input-wide" type="text" maxlength="40" data-goal="${i}" data-key="name" value="${g.name}" aria-label="Event ${i + 1} name">
+          <div style="display:flex;gap:8px">
+            <select class="input" style="flex:1 1 0;min-width:0;max-width:none" data-goal="${i}" data-key="type" aria-label="Event ${i + 1} type">
+              ${Object.entries(s.eventTypes).map(([id, t]) => html`<option value="${id}" ${id === g.type ? html`selected` : ''}>${t.label}</option>`)}
+            </select>
+            <input class="input" style="flex:1 1 0;min-width:0;max-width:none" type="date" data-goal="${i}" data-key="date" value="${g.date}" aria-label="Event ${i + 1} date">
+          </div>
+        </div>`)}
+      <p class="small" style="padding:8px 0 10px">Changing a type or date rebuilds the training plan around it. Logged sessions are kept.</p>
+    </section>
+
+    <h2 class="label-strong section-title">Training plan</h2>
+    <section class="panel" style="gap:0;padding:8px 20px">
+      ${dateField('Plan start', 'First day of week 1', 'plan.startDate', s.plan.startDate)}
+      ${dayField('Rest day', 'No sessions are planned', 'plan.restDow', s.plan.restDow)}
+      ${dayField('Long ride day', '', 'plan.longRideDow', s.plan.longRideDow)}
+      ${dayField('Long run day', '', 'plan.longRunDow', s.plan.longRunDow)}
+      ${numField('Starting hours', 'Weekly total in week 1, lifting included', 'plan.startHours', s.plan.startHours, 'h', 2, 20, true)}
+      ${numField('Peak hours', 'Weekly total at the top of the build', 'plan.peakHours', s.plan.peakHours, 'h', 2, 25, true)}
+      ${dateField('Reach peak by', 'Volume builds until this date', 'plan.peakBy', s.plan.peakBy)}
+      ${numField('Lifts a week, at first', '', 'plan.lifts.before', s.plan.lifts.before, '', 0, 3)}
+      ${dateField('Lifting changes on', '', 'plan.lifts.switchDate', s.plan.lifts.switchDate)}
+      ${numField('Lifts a week, after', '', 'plan.lifts.after', s.plan.lifts.after, '', 0, 3)}
+      ${numField('Lift length', '', 'plan.lifts.minutes', s.plan.lifts.minutes, 'min', 15, 120)}
+      ${numField('Knee pain trigger', 'At or above this, upcoming runs are eased', 'plan.knee.painThreshold', s.plan.knee.painThreshold, '', 1, 10)}
+      ${numField('Ease runs for', 'Days after a flagged knee log', 'plan.knee.reduceDays', s.plan.knee.reduceDays, 'd', 1, 30)}
+    </section>
 
     <h2 class="label-strong section-title">Sleep</h2>
     <section class="panel" style="gap:0;padding:8px 20px">
@@ -58,8 +109,23 @@ export async function render(el, ctx) {
   // Save on change (fires when a field loses focus or Done is tapped).
   el.onchange = async (e) => {
     const t = e.target;
-    if (t.dataset.path) {
-      const n = Math.round(Number(t.value));
+    if (t.dataset.datePath) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(t.value)) { ctx.refresh(); return; } // cleared: put the old date back
+      await setSetting(t.dataset.datePath, t.value);
+      ctx.refresh();
+    } else if (t.dataset.dayPath) {
+      await setSetting(t.dataset.dayPath, Number(t.value));
+      ctx.refresh();
+    } else if (t.dataset.goal != null) {
+      const list = structuredClone(settings().goals);
+      const g = list[Number(t.dataset.goal)];
+      const v = t.value.trim();
+      if (!v || (t.dataset.key === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v))) { ctx.refresh(); return; }
+      g[t.dataset.key] = v;
+      await setSetting('goals', list);
+      ctx.refresh();
+    } else if (t.dataset.path) {
+      const n = 'float' in t.dataset ? Math.round(Number(t.value) * 2) / 2 : Math.round(Number(t.value));
       const min = Number(t.dataset.min), max = Number(t.dataset.max);
       if (t.value === '' || Number.isNaN(n)) { ctx.refresh(); return; } // put the old value back
       await setSetting(t.dataset.path, Math.min(max, Math.max(min, n)));

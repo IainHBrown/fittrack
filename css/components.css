@@ -308,3 +308,85 @@
 
 /* ---------- placeholder screens ---------- */
 .coming { display: flex; flex-direction: column; gap: 10px; padding: 28px 4px; }
+
+/* ================= Stage 2: training ================= */
+
+/* ---------- session rows ---------- */
+.dayhead {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 14px 6px 2px;
+  border-top: 1px solid var(--line);
+}
+.daygroup:first-child .dayhead { border-top: 0; padding-top: 4px; }
+.dayhead[data-today] .label { color: var(--volt); }
+.sess + .sess { border-top: 0; }
+.sess[data-status="skipped"] .rowlink-main,
+.sess[data-status="dropped"] .rowlink-main,
+.sess[data-status="missed"] .rowlink-main { opacity: 0.55; }
+.tile-ghost { background: none; border: 1.5px solid var(--line-strong); color: var(--ash); }
+.tile-done { background: var(--track); color: var(--c, var(--volt)); }
+.target { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+
+/* ---------- week summary ---------- */
+.stack { display: flex; gap: 3px; height: 12px; }
+.stack > span { background: var(--c); border-radius: 2px; min-width: 4px; }
+.stack-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.phasebar { display: flex; gap: 4px; }
+.phasebar > div { display: flex; flex-direction: column; gap: 5px; flex-basis: 0; min-width: 0; }
+.phasebar .bar { height: 8px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.phasebar .bar > i { display: block; height: 100%; background: var(--volt); }
+.phasebar .label { font-size: 13px; overflow: hidden; }
+.phasebar .label.on { color: var(--text); font-weight: 800; }
+
+/* ---------- switch ---------- */
+.switch {
+  width: 54px; height: 32px; border-radius: 16px;
+  background: var(--track);
+  position: relative; flex-shrink: 0;
+  transition: background 0.18s;
+}
+.switch::after {
+  content: ''; position: absolute; top: 4px; left: 4px;
+  width: 24px; height: 24px; border-radius: 12px;
+  background: var(--ash);
+  transition: transform 0.2s var(--ease-out), background 0.18s;
+}
+[aria-pressed="true"] > .switch { background: var(--volt); }
+[aria-pressed="true"] > .switch::after { transform: translateX(22px); background: var(--bg); }
+
+/* ---------- log form ---------- */
+.form-row { display: flex; gap: 10px; }
+.form-field { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.big-input {
+  width: 100%; height: 58px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--bg);
+  text-align: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  padding: 0 8px;
+}
+.big-input:focus { border-color: var(--volt); outline: none; }
+.big-input::placeholder { color: var(--line-strong); }
+textarea.input { width: 100%; height: 76px; padding: 10px 12px; text-align: left; font-weight: 400; font-size: 16px; resize: none; }
+.chips { display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); gap: 6px; }
+.chip {
+  min-height: 44px; border-radius: 12px;
+  background: var(--track);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 21px;
+  transition: background 0.1s, transform 0.1s;
+}
+.chip:active { transform: scale(0.94); }
+.chip[aria-pressed="true"] { background: var(--volt); color: var(--bg); }
+.chip.warn[aria-pressed="true"] { background: var(--flare); }
+
+/* ---------- selects and dates in settings ---------- */
+select.input, input[type="date"].input {
+  width: auto; max-width: 190px; text-align: left;
+  -webkit-appearance: none; appearance: none;
+  color-scheme: dark;
+}
+.notice { display: flex; gap: 12px; align-items: center; padding: 4px 6px; }
+.notice .btn { width: auto; padding: 0 14px; min-height: 44px; font-size: 17px; flex-shrink: 0; }
