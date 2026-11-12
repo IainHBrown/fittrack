@@ -4,8 +4,9 @@
 import { openSheet } from '../ui/sheet.js';
 import { toast } from '../ui/toast.js';
 import { html, mount, onAction } from '../lib/dom.js';
-import { dayKey } from '../lib/dates.js';
-import { putLog, deleteLog, newId } from '../db.js';
+import { dayKey, fmtTime } from '../lib/dates.js';
+import { putLog, deleteLog, newId, getLogs } from '../db.js';
+import { getHealth, unusedWorkouts } from '../health-service.js';
 import { settings } from '../state.js';
 import { paceText, stageFromSwimTest } from '../engine/zones.js';
 import { fmtMin } from '../ui/session.js';
@@ -41,7 +42,10 @@ export function openLogSheet({ session = null, log = null, swimStage = 1 }, onCh
     notes: log ? log.notes || '' : '',
   };
 
-  openSheet(log ? 'Edit log' : other ? 'Other activity' : 'Log session', (body, close) => {
+  openSheet(log ? 'Edit log' : other ? 'Other activity' : 'Log session', async (body, close) => {
+    // workouts the Apple Watch recorded that day and that no log has used yet
+    const watch = log ? [] : unusedWorkouts(await getHealth(), f.date, await getLogs());
+    let watchId = null;
     const hint = session && session.kind === 'bike-test' ? 'Enter the 20-minute test only: its distance and average heart rate.'
       : session && session.kind === 'run-test' ? 'Enter the 30-minute test only: its distance and average heart rate.'
       : session && session.kind === 'swim-test' ? 'Enter the distance you swam without stopping, and the time it took.'
@@ -59,6 +63,15 @@ export function openLogSheet({ session = null, log = null, swimStage = 1 }, onCh
         </div>` : html`
         <div class="label">${session ? session.title : f.title}${session && !isTest ? ` · planned ${fmtMin(session.durationMin)}` : ''}</div>`}
       ${hint ? html`<p class="body-2">${hint}</p>` : ''}
+
+      ${watch.length ? html`
+        <div class="form-field">
+          <span class="label">From your Apple Watch · tap to fill in</span>
+          ${watch.map((w, i) => html`
+            <button class="btn btn-quiet" style="font-size:18px;letter-spacing:0.04em" data-action="watch" data-i="${i}" aria-pressed="false">
+              ${fmtTime(w.start)} · ${w.durationMin} min · ${w.avgHr} bpm${w.distance ? ` · ${w.distance} ${w.unit}` : ''}
+            </button>`)}
+        </div>` : ''}
 
       <div class="form-row">
         <div class="form-field">
@@ -117,6 +130,20 @@ export function openLogSheet({ session = null, log = null, swimStage = 1 }, onCh
     showPace();
 
     onAction(body, {
+      // fill the form from a watch workout (everything stays editable)
+      watch: (t) => {
+        const w = watch[Number(t.dataset.i)];
+        watchId = w.id;
+        $('lg-duration').value = w.durationMin;
+        $('lg-hr').value = w.avgHr;
+        if (unit && w.unit === unit && w.distance) $('lg-distance').value = w.distance;
+        for (const b of body.querySelectorAll('[data-action="watch"]')) {
+          b.setAttribute('aria-pressed', String(b === t));
+          b.style.background = b === t ? 'var(--volt)' : '';
+          b.style.color = b === t ? 'var(--bg)' : '';
+        }
+        showPace();
+      },
       chip: (t) => {
         const group = t.parentElement.dataset.group;
         f[group] = Number(t.dataset.v);
@@ -144,6 +171,7 @@ export function openLogSheet({ session = null, log = null, swimStage = 1 }, onCh
           hr: num(f.hr),
           knee: f.knee,
           notes: f.notes.trim(),
+          watchId: log ? log.watchId || null : watchId,
         };
         await putLog(rec);
         close();

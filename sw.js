@@ -3,7 +3,7 @@
 // the background so the next launch has the newest version.
 // When adding a new file to the app, add it to FILES below.
 
-const CACHE = 'fittrack-v9';
+const CACHE = 'fittrack-v10';
 
 const FILES = [
   './',
@@ -30,6 +30,8 @@ const FILES = [
   'js/plan-service.js',
   'js/lift-service.js',
   'js/cloud.js',
+  'js/health-service.js',
+  'js/logic/health.js',
   'js/push.js',
   'js/backup-service.js',
   'js/lib/photo.js',

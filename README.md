@@ -167,3 +167,49 @@ and on/off switch can be changed, and a test can be sent.
 The Worker signs each push with a key pair: the public half is in
 `worker/wrangler.toml` and `js/defaults.js`; the private half is the Worker
 secret `VAPID_PRIVATE_JWK` and exists nowhere else.
+
+## Apple Watch link (Stage 9)
+
+Apple gives web apps no access to Health, so an iPhone Shortcut sends the
+data to the Worker and the app collects it from there.
+
+**What Shortcuts can read (checked November 2026):** heart rate, sleep stages,
+and running / cycling / swimming distance. It cannot read the sleep score or
+workout records. So the app:
+
+- adds up the sleep stages into time asleep each night (the score is still typed in), and
+- detects workouts from heart rate, which the watch records every few seconds
+  during a workout. Each detected workout appears as a tap-to-fill button
+  (duration, average heart rate, distance) when you log a session that day.
+
+### Build the Shortcut (about 10 minutes, once)
+
+In the Shortcuts app, make a new shortcut in the editor and name it `FitTrack Health`.
+
+For **Sleep**, add these three actions:
+
+1. **Find Health Samples**: Type `Sleep`; add filter `Start Date` `is in the last` `2 days`; Sort by `Start Date`, `Oldest First`; Limit off.
+2. **Repeat with Each** (it uses the Health Samples from step 1). Inside it add a **Text** action containing three variables separated by `|`:
+   `Repeat Item (Start Date)` `|` `Repeat Item (End Date)` `|` `Repeat Item (Value)`.
+   For both dates set Date Format to `ISO 8601` and turn on `Include ISO 8601 Time`.
+3. After End Repeat, **Set Variable**: name `Sleep`, value `Repeat Results`.
+
+Repeat the same three actions for **Heart Rate** (variable `HeartRate`). Optionally
+also for `Cycling Distance` (variable `Cycling`), `Walking + Running Distance`
+(`Running`) and `Swimming Distance` (`Swimming`).
+
+Finally add **Get Contents of URL**:
+
+- URL: `https://fittrack.iainhbrown.workers.dev/health`
+- Method: `POST`
+- Headers: `X-App-Secret` = your passphrase
+- Request Body: `JSON`, with Text fields `sleep` = Sleep, `heartRate` = HeartRate
+  (and `cycling`, `running`, `swimming` if you added them)
+
+Run it once and allow the Health and network permission prompts.
+
+### Run it automatically
+
+Automation tab, new automation, **App**, choose **FitTrack**, **Is Opened**,
+**Run Immediately**, then pick the `FitTrack Health` shortcut. Health data is
+locked while the phone is locked, which is why it runs when you open the app.

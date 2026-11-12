@@ -14,6 +14,8 @@ import { collectBackup, applyBackup } from '../backup-service.js';
 import { cloudConfig, ping, backupNow, cloudInfo, fetchCloudBackup } from '../cloud.js';
 import { checkBackup, backupFileName } from '../logic/backup.js';
 import { VERSION } from '../version.js';
+import { getHealth, syncHealth } from '../health-service.js';
+import { fmtHours } from '../logic/health.js';
 import { pushStatus, enablePush, disablePush, sendTestPush, syncPushState } from '../push.js';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -335,6 +337,42 @@ const PAGES = {
 let pendingImport = null; // a checked backup waiting for confirmation
 let importError = '';
 
+let watchNote = '';
+
+async function watchPage(s) {
+  const h = await getHealth();
+  const cfg = await cloudConfig();
+  const when = (iso) => new Date(iso).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const recent = [...h.workouts].reverse().slice(0, 6);
+  const nights = Object.entries(h.sleep).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 3);
+  return html`
+    ${panel('Apple Watch link', html`
+      <p class="body-2" style="padding:10px 0">An iPhone Shortcut sends your sleep and heart-rate samples to your Worker each time you open the app. The app turns them into time asleep and detected workouts. Apple does not let Shortcuts read the sleep score or workout records, so the score is still typed in.</p>
+      ${!cfg.ready ? html`<p class="body-2 flare" role="note" style="padding-bottom:10px">Set up the Worker in Backup first.</p>` : ''}
+      <button class="btn btn-quiet" data-action="watchCheck" ${cfg.ready ? '' : 'disabled'}>Check for new data</button>
+      ${note(h.receivedAt
+        ? `Last upload received ${when(h.receivedAt)}: ${h.counts.heartRate || 0} heart-rate readings, ${h.counts.sleep || 0} sleep records, ${(h.counts.cycling || 0) + (h.counts.running || 0) + (h.counts.swimming || 0)} distance records.`
+        : 'Nothing received yet. Build the Shortcut using the steps below, then run it once.')}
+      ${watchNote ? html`<p class="body-2" role="status" style="padding-bottom:10px">${watchNote}</p>` : ''}`, '8px 20px 12px')}
+
+    ${h.receivedAt ? panel('What it found', html`
+      ${nights.length === 0 && recent.length === 0 ? html`<p class="body-2" style="padding:10px 0">No sleep or workouts in the last upload.</p>` : ''}
+      ${nights.map(([date, n]) => html`
+        <div class="field"><span class="field-label">Night ending ${date.slice(5)}</span><span class="label-strong" style="font-size:18px">${fmtHours(n.asleepMin)} asleep</span></div>`)}
+      ${recent.map((w) => html`
+        <div class="field">
+          <span class="field-label">${when(new Date(w.start).toISOString())}<span class="field-hint">${w.sport ? `${w.sport} · ${w.distance} ${w.unit}` : 'no distance recorded'}</span></span>
+          <span class="label-strong" style="font-size:18px">${w.durationMin} min · ${w.avgHr} bpm</span>
+        </div>`)}
+      ${note('Detected workouts show up as tap-to-fill buttons when you log a session on that day.')}`) : ''}
+
+    ${panel('The Shortcut sends to', html`
+      <div class="form-field" style="padding:8px 0"><span class="label">URL</span><span class="body-2" style="user-select:text;-webkit-user-select:text;word-break:break-all">${cfg.url || 'your Worker address'}/health</span></div>
+      <div class="form-field" style="padding:8px 0"><span class="label">Header</span><span class="body-2" style="user-select:text;-webkit-user-select:text">X-App-Secret: your passphrase</span></div>
+      <div class="form-field" style="padding:8px 0"><span class="label">JSON fields (all text)</span><span class="body-2" style="user-select:text;-webkit-user-select:text">sleep, heartRate, cycling, running, swimming</span></div>
+      ${note('Each field is one line per sample: start date | end date | value. The full step-by-step is in the README under "Apple Watch link".')}`)}`;
+}
+
 let pushNote = ''; // result of the last notification action
 let pushBusy = false;
 
@@ -466,7 +504,7 @@ export async function render(el, ctx) {
   const pageId = (ctx.params || [])[0];
   const page = PAGES[pageId];
 
-  const custom = { data: { title: 'Backup', body: dataPage }, notify: { title: 'Notifications', body: notifyPage } }[pageId];
+  const custom = { data: { title: 'Backup', body: dataPage }, notify: { title: 'Notifications', body: notifyPage }, watch: { title: 'Apple Watch', body: watchPage } }[pageId];
   if (!page && !custom) {
     mount(el, html`
       <header class="head"><div class="head-stack">
@@ -474,7 +512,7 @@ export async function render(el, ctx) {
         <h1 class="title">Settings</h1>
       </div></header>
       <div>
-        ${[...Object.entries(PAGES), ['notify', { title: 'Notifications', sub: 'Lock-screen reminders: times, wording, test' }], ['data', { title: 'Backup', sub: 'Cloud backup, photo estimates, export, import' }]].map(([id, p]) => html`
+        ${[...Object.entries(PAGES), ['notify', { title: 'Notifications', sub: 'Lock-screen reminders: times, wording, test' }], ['watch', { title: 'Apple Watch', sub: 'Sleep time and workouts from Health' }], ['data', { title: 'Backup', sub: 'Cloud backup, photo estimates, export, import' }]].map(([id, p]) => html`
           <a class="rowlink" href="#/me/settings/${id}">
             <div class="rowlink-main">
               <span class="label-strong" style="font-size:19px">${p.title}</span>
@@ -634,6 +672,15 @@ export async function render(el, ctx) {
     },
     export: async () => { await exportAll(); again(); },
 
+    watchCheck: async () => {
+      watchNote = 'Checking...';
+      await ctx.refresh();
+      try {
+        const h = await syncHealth(true);
+        watchNote = !h ? 'Could not check. Are you online?' : h.changed ? 'New data received.' : h.receivedAt ? 'Nothing new since the last upload.' : 'Nothing has been uploaded yet.';
+      } catch (err) { watchNote = err && err.message ? err.message : 'That did not work.'; }
+      again();
+    },
     notifyToggle: async (t) => {
       const list = structuredClone(settings().notifications);
       list[Number(t.dataset.i)].enabled = !list[Number(t.dataset.i)].enabled;

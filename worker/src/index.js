@@ -63,6 +63,11 @@ export async function handle(request, env) {
       if (!value) return json({ error: 'No backup has been saved yet.' }, 404);
       return new Response(value, { headers: { 'content-type': 'application/json', ...cors } });
     }
+    if (route === 'POST /health') return json(...(await saveHealth(request, env)));
+    if (route === 'GET /health') {
+      const value = await env.KV.get('health:inbox');
+      return new Response(value || '{"receivedAt":null,"data":{}}', { headers: { 'content-type': 'application/json', ...cors } });
+    }
     if (route === 'PUT /push/subscribe') return json(...(await pushSubscribe(request, env)));
     if (route === 'DELETE /push/subscribe') { await env.KV.delete('push:sub'); return json({ ok: true }); }
     if (route === 'PUT /push/state') return json(...(await pushState(request, env)));
@@ -80,7 +85,7 @@ function corsHeaders(request, env) {
   const origin = request.headers.get('Origin');
   const headers = {
     'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-App-Secret',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -91,7 +96,8 @@ function corsHeaders(request, env) {
 /** Compare the bearer token with the secret without leaking timing. */
 async function authorised(request, env) {
   const header = request.headers.get('Authorization') || '';
-  const given = header.startsWith('Bearer ') ? header.slice(7) : '';
+  // the iPhone Shortcut sends the passphrase in a plain X-App-Secret header (simpler to type)
+  const given = header.startsWith('Bearer ') ? header.slice(7) : (request.headers.get('X-App-Secret') || '').trim();
   if (!given) return false;
   const enc = new TextEncoder();
   const [a, b] = await Promise.all([
@@ -230,6 +236,33 @@ async function backupInfo(env) {
     return k ? (k.metadata || {}) : null;
   };
   return { latest: find('backup:latest'), previous: find('backup:previous') };
+}
+
+// ---------- Apple Health inbox (filled by the iPhone Shortcut) ----------
+
+const HEALTH_FIELDS = ['sleep', 'heartRate', 'cycling', 'running', 'swimming'];
+const MAX_HEALTH_CHARS = 1_500_000;
+
+/** Store the latest upload as-is. The app does the parsing, in the phone's own time zone. */
+async function saveHealth(request, env) {
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') return [{ error: 'Send JSON with any of: sleep, heartRate, cycling, running, swimming.' }, 400];
+  const data = {};
+  let size = 0;
+  for (const f of HEALTH_FIELDS) {
+    // accept the field names in any letter case, and lists as well as text
+    const key = Object.keys(body).find((k) => k.toLowerCase().replace(/[^a-z]/g, '') === f.toLowerCase());
+    if (key == null) continue;
+    const v = body[key];
+    data[f] = Array.isArray(v) ? v.join('\n') : String(v ?? '');
+    size += data[f].length;
+  }
+  if (!Object.keys(data).length) return [{ error: 'No health fields found. Expected: sleep, heartRate, cycling, running, swimming.' }, 400];
+  if (size > MAX_HEALTH_CHARS) return [{ error: 'Too much data in one upload. Send the last 2 days only.' }, 413];
+  const receivedAt = new Date().toISOString();
+  await env.KV.put('health:inbox', JSON.stringify({ receivedAt, data }));
+  const lines = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v ? v.split('\n').filter(Boolean).length : 0]));
+  return [{ ok: true, receivedAt, lines }, 200];
 }
 
 // ---------- push notifications ----------

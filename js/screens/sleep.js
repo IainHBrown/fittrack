@@ -7,6 +7,7 @@ import { settings } from '../state.js';
 import { sleepLevel, sleepStats } from '../logic/day.js';
 import { icon } from '../ui/icons.js';
 import { openSleepSheet } from '../sheets/sleep.js';
+import { fmtHours } from '../logic/health.js';
 
 // which month the calendar shows (kept while the app is open)
 let viewMonth = null;
@@ -104,6 +105,15 @@ export async function render(el, ctx) {
           <span class="small">Tap to edit</span>
         </div>
       </button>`}
+
+    ${todayRec.sleepMin ? html`
+      <div class="notice" role="note" style="margin-top:-6px">
+        <div class="tile" style="--c:var(--track);color:var(--text)">${icon('sleep', 22, 2.4)}</div>
+        <div class="rowlink-main">
+          <span class="label-strong" style="font-size:19px">${fmtHours(todayRec.sleepMin)} asleep</span>
+          <span class="body-2">From your Apple Watch${todayRec.sleepAwakeMin ? ` · ${todayRec.sleepAwakeMin} min awake` : ''}</span>
+        </div>
+      </div>` : ''}
 
     <section style="display:flex;flex-direction:column;gap:10px">
       <div class="cal-nav">

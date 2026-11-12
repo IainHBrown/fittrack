@@ -149,3 +149,22 @@ test('anything that is not a Fitness Tracker backup is refused', async () => {
   assert.equal(env.KV.data.has('backup:latest'), false);
   assert.equal((await call(env, 'GET', '/nope')).status, 404);
 });
+
+test('health inbox: the Shortcut posts samples with a plain passphrase header', async () => {
+  const env = makeEnv();
+  const post = (body, headers) => handle(new Request('https://w.example/health', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }), env);
+  assert.equal((await post({ sleep: 'x' }, {})).status, 401);
+  assert.equal((await post({ sleep: 'x' }, { 'X-App-Secret': 'wrong' })).status, 401);
+  // field names are matched loosely, and a list is joined into lines
+  const ok = await post({ Sleep: 'a|b|Core\nc|d|REM', 'Heart Rate': ['t1|61', 't2|64', 't3|70'], extra: 'ignored' }, { 'X-App-Secret': SECRET });
+  assert.equal(ok.status, 200);
+  assert.deepEqual((await ok.json()).lines, { sleep: 2, heartRate: 3 });
+  const got = await (await call(env, 'GET', '/health')).json();
+  assert.equal(got.data.heartRate, 't1|61\nt2|64\nt3|70');
+  assert.equal(got.data.extra, undefined);
+  assert.match(got.receivedAt, /^\d{4}-/);
+  assert.equal((await post({ nothing: 1 }, { 'X-App-Secret': SECRET })).status, 400);
+  assert.equal((await post({ heartRate: 'x'.repeat(1_500_001) }, { 'X-App-Secret': SECRET })).status, 413);
+  // before anything is uploaded the app gets an empty inbox, not an error
+  assert.deepEqual(await (await call(makeEnv(), 'GET', '/health')).json(), { receivedAt: null, data: {} });
+});

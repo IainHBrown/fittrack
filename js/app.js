@@ -9,6 +9,7 @@ import { icon } from './ui/icons.js';
 import { celebrate } from './ui/celebrate.js';
 import { maybeAutoBackup } from './cloud.js';
 import { syncPushState } from './push.js';
+import { syncHealth } from './health-service.js';
 import { getGame, newMoments } from './game-service.js';
 import { render as renderToday } from './screens/today.js';
 import { render as renderSleep } from './screens/sleep.js';
@@ -84,6 +85,8 @@ async function checkMoments() {
   checking = false;
   maybeAutoBackup(); // uploads only when one is due and cloud is set up
   syncPushState();   // tells the Worker what is done today (only if notifications are on)
+  // pick up anything the Apple Watch shortcut uploaded, and re-draw if it brought something new
+  syncHealth().then((h) => { if (h && h.changed) refresh(); }).catch(() => {});
 }
 
 async function navigate() {
@@ -123,7 +126,14 @@ async function start() {
   await navigate();
 
   window.addEventListener('hashchange', navigate);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDayChange(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    checkDayChange();
+    // The shortcut runs when the app opens, so its upload lands a few seconds later.
+    for (const wait of [1500, 12000, 30000]) {
+      setTimeout(() => syncHealth(true).then((h) => { if (h && h.changed) refresh(); }).catch(() => {}), wait);
+    }
+  });
   window.addEventListener('pageshow', checkDayChange);
   setInterval(checkDayChange, 20000);
 
