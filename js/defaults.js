@@ -240,7 +240,19 @@ export const DEFAULTS = {
     url: 'https://fittrack.iainhbrown.workers.dev', // the Worker's address
     autoBackup: true,
     backupEveryHours: 6,  // at most one automatic backup per this many hours
+    vapidPublicKey: 'BAo-7w9KIvND4TX9-BJCLoCSNy_34ZELfPhLS4xenSXg35Zg4BC8qEbTmhgreTRAU9uMCdhanx4zvWYVxbLeswE', // public half of the Worker's notification key
   },
+
+  // ---------- lock-screen notifications ----------
+  // Each is sent at its time only if the thing is still not done.
+  // {workout} and {streaks} are filled in by the Worker.
+  notifications: [
+    { id: 'sleep', name: 'Sleep score not logged', enabled: true, time: '09:30', title: 'Sleep score', body: "Log last night's sleep score to keep your streak." },
+    { id: 'workout', name: "Today's workout not done", enabled: true, time: '15:30', title: 'Workout still to do', body: 'Not done yet today: {workout}.' },
+    { id: 'water', name: 'Water goal not reached', enabled: true, time: '18:00', title: 'Water', body: "You haven't hit your water goal yet." },
+    { id: 'supps', name: 'Supplements not ticked', enabled: true, time: '20:00', title: 'Supplements', body: 'Not all ticked off yet today.' },
+    { id: 'streak', name: 'A streak is at risk', enabled: true, time: '21:00', title: 'Streak at risk', body: 'Do it today to keep your {streaks} streak.' },
+  ],
 
   // ---------- stretching ----------
   stretchCategories: ['Warm-up', 'Activation', 'Mobility', 'Recovery', 'Roller', 'Cool-down'],

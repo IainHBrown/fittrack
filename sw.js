@@ -3,7 +3,7 @@
 // the background so the next launch has the newest version.
 // When adding a new file to the app, add it to FILES below.
 
-const CACHE = 'fittrack-v8';
+const CACHE = 'fittrack-v9';
 
 const FILES = [
   './',
@@ -30,6 +30,7 @@ const FILES = [
   'js/plan-service.js',
   'js/lift-service.js',
   'js/cloud.js',
+  'js/push.js',
   'js/backup-service.js',
   'js/lib/photo.js',
   'js/game-service.js',
@@ -106,6 +107,29 @@ self.addEventListener('fetch', (event) => {
         return cached;
       }
       return (await fresh) || new Response('Offline', { status: 503, statusText: 'Offline' });
+    })
+  );
+});
+
+// ---------- push notifications (sent by the Cloudflare Worker) ----------
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { /* not JSON: show a plain notification */ }
+  event.waitUntil(self.registration.showNotification(data.title || 'Fitness Tracker', {
+    body: data.body || 'Open the app to check in.',
+    tag: data.tag || 'fittrack',
+    icon: 'assets/icons/icon-192.png',
+    badge: 'assets/icons/icon-192.png',
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) if ('focus' in client) return client.focus();
+      return self.clients.openWindow('./');
     })
   );
 });

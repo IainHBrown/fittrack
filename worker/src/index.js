@@ -5,6 +5,13 @@
 //   GET  /backup                                               -> the latest backup
 //   GET  /backup/info                                          -> when it was saved, and its size
 //   GET  /ping                                                 -> checks the secret and bindings
+//   PUT  /push/subscribe { subscription }                      -> remember this phone for notifications
+//   DELETE /push/subscribe                                     -> forget it
+//   PUT  /push/state     { state }                             -> what is done today, and the notification settings
+//   POST /push/test                                            -> send a test notification now
+//
+// Every 15 minutes (cron) the Worker checks whether a notification is due and
+// its goal is still not done, and only then sends it.
 //
 // Every request must carry "Authorization: Bearer <APP_SECRET>". APP_SECRET is
 // a Worker secret (set with `wrangler secret put APP_SECRET`); it is never in
@@ -15,6 +22,9 @@ const MAX_BACKUP_BYTES = 24 * 1024 * 1024; // KV values can be up to 25 MiB
 
 const DEFAULT_ORIGINS = 'https://iainhbrown.github.io,http://localhost:8080,http://localhost:8081';
 const DEFAULT_MODELS = '@cf/meta/llama-4-scout-17b-16e-instruct,@cf/meta/llama-3.2-11b-vision-instruct';
+
+import { sendPush } from './webpush.js';
+import { dueNotifications, localDate } from './rules.js';
 
 const SYSTEM = 'You estimate the nutrition of a meal from one photo for a rough personal food log. '
   + 'Assume typical restaurant or dining-hall portions unless the photo clearly shows otherwise. '
@@ -27,6 +37,9 @@ const USER = 'Estimate the total calories, protein, carbs and fat for everything
 export default {
   fetch(request, env) {
     return handle(request, env);
+  },
+  scheduled(event, env, ctx) {
+    ctx.waitUntil(tick(env, new Date()));
   },
 };
 
@@ -50,6 +63,10 @@ export async function handle(request, env) {
       if (!value) return json({ error: 'No backup has been saved yet.' }, 404);
       return new Response(value, { headers: { 'content-type': 'application/json', ...cors } });
     }
+    if (route === 'PUT /push/subscribe') return json(...(await pushSubscribe(request, env)));
+    if (route === 'DELETE /push/subscribe') { await env.KV.delete('push:sub'); return json({ ok: true }); }
+    if (route === 'PUT /push/state') return json(...(await pushState(request, env)));
+    if (route === 'POST /push/test') return json(...(await pushTest(env)));
     return json({ error: 'Not found.' }, 404);
   } catch (err) {
     return json({ error: `Worker error: ${err && err.message ? err.message : 'unknown'}` }, 500);
@@ -62,7 +79,7 @@ function corsHeaders(request, env) {
   const allowed = (env.ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(',').map((s) => s.trim());
   const origin = request.headers.get('Origin');
   const headers = {
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -213,4 +230,65 @@ async function backupInfo(env) {
     return k ? (k.metadata || {}) : null;
   };
   return { latest: find('backup:latest'), previous: find('backup:previous') };
+}
+
+// ---------- push notifications ----------
+
+function vapid(env) {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_JWK) return null;
+  return { publicKey: env.VAPID_PUBLIC_KEY, privateJwk: JSON.parse(env.VAPID_PRIVATE_JWK), subject: env.VAPID_SUBJECT || 'https://iainhbrown.github.io/fittrack/' };
+}
+
+async function pushSubscribe(request, env) {
+  const body = await request.json().catch(() => null);
+  const sub = body && body.subscription;
+  const good = sub && typeof sub.endpoint === 'string' && sub.endpoint.startsWith('https://') && sub.keys && sub.keys.p256dh && sub.keys.auth;
+  if (!good) return [{ error: 'That is not a push subscription.' }, 400];
+  await env.KV.put('push:sub', JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }));
+  return [{ ok: true }, 200];
+}
+
+async function pushState(request, env) {
+  const body = await request.json().catch(() => null);
+  const state = body && body.state;
+  if (!state || typeof state !== 'object' || !Array.isArray(state.notifications)) return [{ error: 'Bad state.' }, 400];
+  const text = JSON.stringify(state);
+  if (text.length > 20000) return [{ error: 'State too large.' }, 413];
+  await env.KV.put('push:state', text);
+  return [{ ok: true }, 200];
+}
+
+/** Send to the saved phone. Forgets the subscription if the push service says it is gone. */
+async function deliver(env, message) {
+  const keys = vapid(env);
+  if (!keys) return { ok: false, status: 0, error: 'The Worker has no notification keys yet.' };
+  const sub = JSON.parse((await env.KV.get('push:sub')) || 'null');
+  if (!sub) return { ok: false, status: 0, error: 'Notifications are not turned on for any phone yet.' };
+  const res = await sendPush(sub, message, keys, env.FETCH || fetch);
+  if (res.gone) await env.KV.delete('push:sub');
+  return res;
+}
+
+async function pushTest(env) {
+  const res = await deliver(env, { title: 'Fitness Tracker', body: 'Test notification. If you can read this, it works.', tag: 'test' });
+  if (res.ok) return [{ ok: true }, 200];
+  return [{ error: res.error || (res.gone ? 'This phone is no longer subscribed. Turn notifications on again.' : `The push service answered ${res.status}.`) }, 502];
+}
+
+/** One scheduled check: send whatever is due and still not done. */
+export async function tick(env, now) {
+  const state = JSON.parse((await env.KV.get('push:state')) || 'null');
+  if (!state) return [];
+  const sent = JSON.parse((await env.KV.get('push:sent')) || '{}');
+  const due = dueNotifications(state, sent, now);
+  if (!due.length) return [];
+  const today = localDate(now, state.tz || 'UTC');
+  const delivered = [];
+  for (const n of due) {
+    const res = await deliver(env, { title: n.title, body: n.body, tag: n.id });
+    if (res.ok) { sent[n.id] = today; delivered.push(n.id); }
+    else if (!res.status) break; // no keys or no phone: nothing more to try
+  }
+  if (delivered.length) await env.KV.put('push:sent', JSON.stringify(sent));
+  return delivered;
 }

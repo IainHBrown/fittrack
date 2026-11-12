@@ -24,3 +24,10 @@ ALLOWED_ORIGINS = "https://iainhbrown.github.io,http://localhost:8080,http://loc
 VISION_MODELS = "@cf/meta/llama-4-scout-17b-16e-instruct,@cf/meta/llama-3.2-11b-vision-instruct"
 # Most photo estimates allowed per day.
 DAILY_ESTIMATES = "80"
+# Public half of the notification key (the private half is the secret VAPID_PRIVATE_JWK).
+VAPID_PUBLIC_KEY = "BAo-7w9KIvND4TX9-BJCLoCSNy_34ZELfPhLS4xenSXg35Zg4BC8qEbTmhgreTRAU9uMCdhanx4zvWYVxbLeswE"
+VAPID_SUBJECT = "https://iainhbrown.github.io/fittrack/"
+
+# Check every 15 minutes whether a notification is due.
+[triggers]
+crons = ["*/15 * * * *"]

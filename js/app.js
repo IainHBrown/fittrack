@@ -8,6 +8,7 @@ import { requestPersistence } from './db.js';
 import { icon } from './ui/icons.js';
 import { celebrate } from './ui/celebrate.js';
 import { maybeAutoBackup } from './cloud.js';
+import { syncPushState } from './push.js';
 import { getGame, newMoments } from './game-service.js';
 import { render as renderToday } from './screens/today.js';
 import { render as renderSleep } from './screens/sleep.js';
@@ -82,6 +83,7 @@ async function checkMoments() {
   } catch { /* never let a celebration break the app */ }
   checking = false;
   maybeAutoBackup(); // uploads only when one is due and cloud is set up
+  syncPushState();   // tells the Worker what is done today (only if notifications are on)
 }
 
 async function navigate() {

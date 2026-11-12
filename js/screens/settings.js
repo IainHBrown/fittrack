@@ -14,6 +14,7 @@ import { collectBackup, applyBackup } from '../backup-service.js';
 import { cloudConfig, ping, backupNow, cloudInfo, fetchCloudBackup } from '../cloud.js';
 import { checkBackup, backupFileName } from '../logic/backup.js';
 import { VERSION } from '../version.js';
+import { pushStatus, enablePush, disablePush, sendTestPush, syncPushState } from '../push.js';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,8 +75,8 @@ const resetButton = (paths) => html`
 
 /** One editable input inside a list: saves list[i][key] (or list[i] when there is no key). */
 function cell(listPath, i, key, value, { kind = 'text', label = '', style = '', max = 40, placeholder = '' } = {}) {
-  return html`<input class="input input-wide" style="${style}" type="${kind === 'text' ? 'text' : 'number'}"
-    ${kind === 'text' ? html`maxlength="${max}"` : html`inputmode="decimal" step="any" min="0"`}
+  return html`<input class="input input-wide" style="${style}" type="${kind === 'text' ? 'text' : kind === 'time' ? 'time' : 'number'}"
+    ${kind === 'text' ? html`maxlength="${max}"` : kind === 'time' ? '' : html`inputmode="decimal" step="any" min="0"`}
     data-list="${listPath}" data-i="${i}" ${key ? html`data-key="${key}"` : ''} data-kind="${kind}"
     value="${value}" placeholder="${placeholder}" aria-label="${label}">`;
 }
@@ -334,6 +335,41 @@ const PAGES = {
 let pendingImport = null; // a checked backup waiting for confirmation
 let importError = '';
 
+let pushNote = ''; // result of the last notification action
+let pushBusy = false;
+
+async function notifyPage(s) {
+  const st = await pushStatus();
+  const cfg = await cloudConfig();
+  return html`
+    ${panel('Lock-screen notifications', html`
+      <p class="body-2" style="padding:10px 0">A notification is only sent when something is still behind at its time, such as a streak at risk or today's workout not done. They are sent by your Worker, so they arrive even when the app is closed.</p>
+      ${!st.ok ? html`<p class="body-2 flare" role="note" style="padding-bottom:10px">${st.reason}</p>` : ''}
+      ${st.ok && !cfg.ready ? html`<p class="body-2 flare" role="note" style="padding-bottom:10px">Set up the Worker in Backup first.</p>` : ''}
+      ${st.on
+        ? html`
+          <button class="btn" data-action="pushTest" ${pushBusy ? 'disabled' : ''}>Send test notification</button>
+          <button class="btn btn-ghost" style="margin-top:10px" data-action="pushOff" ${pushBusy ? 'disabled' : ''}>Turn notifications off</button>`
+        : html`<button class="btn" data-action="pushOn" ${st.ok && cfg.ready && !pushBusy ? '' : 'disabled'}>Turn notifications on</button>`}
+      ${note(st.on ? 'Notifications are on for this phone.' : st.permission === 'denied' ? 'Notifications are blocked. Allow them in iPhone Settings, Notifications, FitTrack.' : 'Notifications are off.')}
+      ${pushNote ? html`<p class="body-2" role="status" style="padding-bottom:10px">${pushNote}</p>` : ''}`, '8px 20px 12px')}
+
+    ${panel('What to send, and when', html`
+      ${s.notifications.map((n, i) => html`
+        <div style="padding:12px 0;${i ? 'border-top:1px solid var(--line)' : ''};display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button data-action="notifyToggle" data-i="${i}" aria-pressed="${String(!!n.enabled)}" aria-label="${n.name}" style="display:flex;align-items:center;gap:10px;flex:1 1 0;min-width:0;min-height:44px">
+              <span class="switch"></span>
+              <span class="label-strong" style="font-size:17px">${n.name}</span>
+            </button>
+            ${cell('notifications', i, 'time', n.time, { kind: 'time', label: `${n.name} time`, style: 'width:112px;flex:0 0 auto;text-align:center' })}
+          </div>
+          ${cell('notifications', i, 'title', n.title, { label: `${n.name} title`, max: 40 })}
+          ${cell('notifications', i, 'body', n.body, { label: `${n.name} wording`, max: 140 })}
+        </div>`)}
+      ${note("{workout} becomes the sessions still to do, and {streaks} the streaks at risk. Times are in your phone's time zone and can arrive up to 15 minutes late.")}`)}`;
+}
+
 let cloudNote = ''; // result of the last cloud action, shown under the buttons
 let cloudBusy = false;
 
@@ -430,14 +466,15 @@ export async function render(el, ctx) {
   const pageId = (ctx.params || [])[0];
   const page = PAGES[pageId];
 
-  if (!page && pageId !== 'data') {
+  const custom = { data: { title: 'Backup', body: dataPage }, notify: { title: 'Notifications', body: notifyPage } }[pageId];
+  if (!page && !custom) {
     mount(el, html`
       <header class="head"><div class="head-stack">
         <a class="backlink label" href="#/me">${icon('left', 18, 2.4)} Me</a>
         <h1 class="title">Settings</h1>
       </div></header>
       <div>
-        ${[...Object.entries(PAGES), ['data', { title: 'Backup', sub: 'Export or import all your data' }]].map(([id, p]) => html`
+        ${[...Object.entries(PAGES), ['notify', { title: 'Notifications', sub: 'Lock-screen reminders: times, wording, test' }], ['data', { title: 'Backup', sub: 'Cloud backup, photo estimates, export, import' }]].map(([id, p]) => html`
           <a class="rowlink" href="#/me/settings/${id}">
             <div class="rowlink-main">
               <span class="label-strong" style="font-size:19px">${p.title}</span>
@@ -453,10 +490,10 @@ export async function render(el, ctx) {
   mount(el, html`
     <header class="head"><div class="head-stack">
       <a class="backlink label" href="#/me/settings">${icon('left', 18, 2.4)} Settings</a>
-      <h1 class="title" style="font-size:${(page ? page.title : 'Backup').length > 16 ? 32 : 40}px">${page ? page.title : 'Backup'}</h1>
+      <h1 class="title" style="font-size:${(page || custom).title.length > 16 ? 32 : 40}px">${(page || custom).title}</h1>
     </div></header>
-    ${page ? page.body(s) : await dataPage(s)}
-    ${page ? resetButton(page.reset) : ''}`);
+    ${page ? page.body(s) : await custom.body(s)}
+    ${page ? resetButton(page.reset) : pageId === 'notify' ? resetButton(['notifications']) : ''}`);
 
   const again = () => ctx.refresh();
 
@@ -467,6 +504,17 @@ export async function render(el, ctx) {
     await ctx.refresh();
     try { cloudNote = await fn(); } catch (err) { cloudNote = err && err.message ? err.message : 'That did not work.'; }
     cloudBusy = false;
+    again();
+  }
+
+  async function pushDo(working, fn) {
+    pushBusy = true;
+    pushNote = working;
+    // enabling must start inside the tap, so do not wait for a re-draw first
+    const task = fn();
+    ctx.refresh();
+    try { pushNote = await task; } catch (err) { pushNote = err && err.message ? err.message : 'That did not work.'; }
+    pushBusy = false;
     again();
   }
 
@@ -515,6 +563,8 @@ export async function render(el, ctx) {
         v = Number(v);
       } else if (kind === 'date') {
         if (!ISO_DATE.test(v)) return again();
+      } else if (kind === 'time') {
+        if (!/^\d{2}:\d{2}$/.test(v)) return again();
       } else if (v === '' && key !== 'dose' && key !== 'rest') {
         return again(); // names cannot be blank: put the old one back
       }
@@ -528,6 +578,7 @@ export async function render(el, ctx) {
         if (path === 'food.groups') for (const f of await getAll('foods')) if (f.group === old) await putItem('foods', { ...f, group: v });
       }
       await setSetting(path, list);
+      if (path === 'notifications') syncPushState(true);
       return again();
     }
 
@@ -582,6 +633,17 @@ export async function render(el, ctx) {
       again();
     },
     export: async () => { await exportAll(); again(); },
+
+    notifyToggle: async (t) => {
+      const list = structuredClone(settings().notifications);
+      list[Number(t.dataset.i)].enabled = !list[Number(t.dataset.i)].enabled;
+      await setSetting('notifications', list);
+      syncPushState(true);
+      again();
+    },
+    pushOn: () => pushDo('Turning on...', async () => { await enablePush(); return 'Notifications are on. Send a test to check.'; }),
+    pushOff: () => pushDo('Turning off...', async () => { await disablePush(); return 'Notifications are off.'; }),
+    pushTest: () => pushDo('Sending...', async () => { await sendTestPush(); return 'Sent. It should appear within a few seconds. Lock your phone to see it on the lock screen.'; }),
 
     autoBackup: async () => { await setSetting('cloud.autoBackup', !settings().cloud.autoBackup); again(); },
     cloudTest: () => cloudDo('Checking...', async () => {

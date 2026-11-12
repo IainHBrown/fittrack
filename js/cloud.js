@@ -18,7 +18,7 @@ export async function cloudConfig() {
   return { url, secret, ready: !!(url && secret) };
 }
 
-async function call(path, { method = 'GET', body = null, raw = false } = {}) {
+export async function cloudCall(path, { method = 'GET', body = null, raw = false } = {}) {
   const cfg = await cloudConfig();
   if (!cfg.ready) throw new CloudError('setup', 'Cloud features are not set up yet. Add the Worker address and passphrase in Me, Settings, Backup.');
   if (navigator.onLine === false) throw new CloudError('offline', "You're offline. This needs an internet connection.");
@@ -39,6 +39,8 @@ async function call(path, { method = 'GET', body = null, raw = false } = {}) {
   }
   return data;
 }
+
+const call = cloudCall;
 
 export const ping = () => call('/ping');
 

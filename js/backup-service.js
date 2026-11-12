@@ -6,7 +6,7 @@ import { VERSION } from './version.js';
 
 // These stay on this device: they are never put in a backup, and a restore
 // never overwrites them. (The cloud passphrase must not travel in backups.)
-export const LOCAL_ONLY = ['cloudSecret', 'lastCloudBackup', 'lastExport', 'cloudPending'];
+export const LOCAL_ONLY = ['cloudSecret', 'lastCloudBackup', 'lastExport', 'cloudPending', 'pushOn', 'pushStateHash'];
 
 /** Everything in the app as a backup object, minus device-only values. */
 export async function collectBackup() {

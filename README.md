@@ -155,3 +155,15 @@ Both run on your own free Cloudflare Worker in `worker/`. Nothing is paid:
    passphrase, then tap **Test connection**.
 
 To change the Worker later, edit `worker/src/index.js` and run `npx wrangler deploy` again.
+
+## Notifications (Stage 8)
+
+Lock-screen notifications use Web Push (iOS 16.4 or later, and only for the
+app installed on the Home Screen). The Worker runs a check every 15 minutes
+and sends a notification only when its goal is still not done at its time.
+Turn them on in Me, Settings, Notifications, where each one's time, wording
+and on/off switch can be changed, and a test can be sent.
+
+The Worker signs each push with a key pair: the public half is in
+`worker/wrangler.toml` and `js/defaults.js`; the private half is the Worker
+secret `VAPID_PRIVATE_JWK` and exists nowhere else.
