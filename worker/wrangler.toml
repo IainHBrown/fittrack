@@ -15,7 +15,7 @@ binding = "AI"
 # Workers KV: cloud backup and the daily estimate counter (free: 1 GB, 1,000 writes a day)
 [[kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "fb90d8452d294fdd974e271a55cc6f5b"
 
 [vars]
 # Web addresses allowed to call this Worker from a browser.

@@ -3,7 +3,7 @@
 // the background so the next launch has the newest version.
 // When adding a new file to the app, add it to FILES below.
 
-const CACHE = 'fittrack-v7';
+const CACHE = 'fittrack-v8';
 
 const FILES = [
   './',

@@ -237,7 +237,7 @@ export const DEFAULTS = {
 
   // ---------- cloud (Cloudflare Worker): photo estimates and backup ----------
   cloud: {
-    url: '',              // the Worker's address, e.g. https://fittrack.yourname.workers.dev
+    url: 'https://fittrack.iainhbrown.workers.dev', // the Worker's address
     autoBackup: true,
     backupEveryHours: 6,  // at most one automatic backup per this many hours
   },
